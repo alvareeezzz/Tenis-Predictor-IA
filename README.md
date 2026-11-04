@@ -16,7 +16,17 @@ python -m venv .venv
 .venv/Scripts/python data-pipeline/02_limpiar.py     # une y ordena los partidos
 .venv/Scripts/python data-pipeline/03_elo.py         # Elo general y por superficie
 .venv/Scripts/python data-pipeline/04_features.py    # H2H, estadísticas de saque y resto, forma, cansancio
+.venv/Scripts/python data-pipeline/05_entrenar.py    # entrena y evalúa los modelos (~5 min)
 ```
+
+## Resultados (partidos del circuito principal 2023-2026, nunca vistos al entrenar)
+
+| Modelo | Acierto | Log loss |
+|---|---|---|
+| Gana el mejor clasificado en el ranking ATP | 64,4 % | – |
+| Elo combinado (general + superficie) | 65,9 % | 0,608 |
+| Regresión logística | 67,1 % | 0,595 |
+| **XGBoost** | **67,1 %** | **0,594** |
 
 ## Datos
 
