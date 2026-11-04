@@ -12,6 +12,7 @@ Salidas:
   data/modelo_xgb.json        modelo final (reentrenado con todos los partidos)
   data/modelo_columnas.json   orden de las variables que espera el modelo
   data/informe_modelo.txt     métricas de la evaluación
+  data/predicciones_prueba.parquet  probabilidades en la prueba, para compararlas con las cuotas
 """
 
 import json
@@ -173,6 +174,10 @@ def main() -> None:
 
     y = prueba["gana_a"].to_numpy()
     p = predecir(arbol, prueba, bases)
+    # Predicciones del modelo que no vio la prueba, para compararlas con las cuotas (07_comparar_cuotas.py)
+    pd.DataFrame({"orden": prueba["orden"].to_numpy(), "gana_a": y, "id_a": prueba["id_a"].to_numpy(),
+                  "prob_xgb": p, "prob_logistica": predecir(logistica, prueba, bases),
+                  "prob_elo": elo(prueba).to_numpy()}).to_parquet(DATOS / "predicciones_prueba.parquet", index=False)
     informe.append("\nCalibración de XGBoost en prueba:")
     informe.append(tabla_calibracion(y, p))
 

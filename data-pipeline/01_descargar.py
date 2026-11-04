@@ -1,8 +1,11 @@
-"""Fase 1 - Descarga los datos ATP de Jeff Sackmann.
+"""Fase 1 - Descarga los datos ATP de Jeff Sackmann y las cuotas de apuestas.
 
 El repositorio original (JeffSackmann/tennis_atp) dejó de estar disponible en 2026,
 así que se usa el espejo de archivo Aneeshers/tennis-sackmann-archive, con la misma
 licencia: CC BY-NC-SA 4.0 (uso no comercial, citando a Jeff Sackmann).
+
+Cuotas de Pinnacle desde 2021: Valuebetennis (CC BY 4.0, https://www.valuebetennis.com/donnees.htm),
+ya emparejadas con los partidos de Sackmann por sumeetamin/tennis-history-data.
 """
 
 from pathlib import Path
@@ -11,6 +14,8 @@ import requests
 
 BASE_URL = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/atp"
 DESTINO = Path(__file__).parent / "data" / "raw"
+CUOTAS_URL = "https://raw.githubusercontent.com/sumeetamin/tennis-history-data/HEAD/data/odds/linked_odds_sackmann.csv.gz"
+CUOTAS_DESTINO = DESTINO / "cuotas" / "linked_odds_sackmann.csv.gz"
 
 # Se baja desde 1968 (inicio de la Era Open) para que el Elo tenga historia suficiente,
 # aunque las estadísticas de cada partido (aces, % de saque...) solo existen desde 1991.
@@ -53,6 +58,13 @@ def main() -> None:
         # El año en curso y el ranking actual se vuelven a bajar siempre por si hay cambios.
         forzar = str(ULTIMO_ANIO) in nombre or "current" in nombre
         descargar(nombre, forzar)
+
+    # Las cuotas se actualizan a diario: se bajan siempre
+    CUOTAS_DESTINO.parent.mkdir(exist_ok=True)
+    respuesta = requests.get(CUOTAS_URL, timeout=120)
+    respuesta.raise_for_status()
+    CUOTAS_DESTINO.write_bytes(respuesta.content)
+    print(f"  cuotas: {CUOTAS_DESTINO.name} ({len(respuesta.content) / 1024:.0f} KB)")
     print("Listo.")
 
 

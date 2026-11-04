@@ -33,6 +33,20 @@ python -m venv .venv
 | Regresión logística | 67,1 % | 0,595 |
 | **XGBoost** | **67,1 %** | **0,594** |
 
+### Frente a las casas de apuestas (`07_comparar_cuotas.py`)
+
+En los 6.416 partidos de prueba con cuota de Pinnacle (la casa más afinada del mercado):
+
+| Método | Acierto | Log loss |
+|---|---|---|
+| XGBoost | 67,1 % | 0,595 |
+| Pinnacle, cuota de apertura | 68,1 % | 0,586 |
+| Pinnacle, cuota de cierre | 69,0 % | 0,582 |
+
+El mercado sigue por delante y apostar con el modelo pierde dinero (ROI de -7 % a -9 %).
+Cuotas: [Valuebetennis](https://www.valuebetennis.com/donnees.htm) (CC BY 4.0), emparejadas con
+Sackmann por [sumeetamin/tennis-history-data](https://github.com/sumeetamin/tennis-history-data).
+
 ## Datos
 
 Partidos, rankings y jugadores ATP recopilados por **Jeff Sackmann**
