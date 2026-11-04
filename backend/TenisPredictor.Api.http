@@ -1,0 +1,33 @@
+### Peticiones de ejemplo (extensión REST Client de VS Code o Visual Studio)
+@api = http://localhost:5014/api
+
+### Fecha de los datos, fuente e informe del modelo
+GET {{api}}/info
+
+### Buscar jugadores por nombre
+GET {{api}}/jugadores?buscar=alcaraz
+
+### Mejores por Elo (General, Hard, Clay o Grass)
+GET {{api}}/jugadores/top?superficie=Clay&limite=10
+
+### Ficha de un jugador: datos, Elo, estadísticas y últimos partidos (207989 = Carlos Alcaraz)
+GET {{api}}/jugadores/207989
+
+### Evolución del Elo
+GET {{api}}/jugadores/207989/elo
+
+### Enfrentamiento directo (206173 = Jannik Sinner)
+GET {{api}}/h2h/207989/206173
+
+### Pronóstico: final de Roland Garros
+POST {{api}}/prediccion
+Content-Type: application/json
+
+{
+  "jugadorA": 207989,
+  "jugadorB": 206173,
+  "superficie": "Clay",
+  "nivel": "G",
+  "ronda": "F",
+  "mejorDe": 5
+}

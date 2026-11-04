@@ -4,7 +4,8 @@ App para pronosticar partidos de tenis ATP con datos reales: Elo (general y por 
 enfrentamientos directos y estadísticas individuales (aces, % de saque, puntos al resto, break points…).
 
 - **data-pipeline/** (Python): descarga de datos, cálculo de Elo y estadísticas, entrenamiento del modelo
-- **backend/** (ASP.NET Core .NET 10): API de jugadores, H2H y predicción *(pendiente)*
+- **backend/** (ASP.NET Core .NET 10): API de jugadores, H2H y predicción con el modelo ONNX
+- **tests/** (xUnit): comprueba que la API da la misma probabilidad que Python
 - **frontend/** (Angular 20): buscador, comparador y pronóstico *(pendiente)*
 
 ## Puesta en marcha
@@ -23,6 +24,26 @@ python -m venv .venv
 `tenis.db` (~60 MB) y `modelo.onnx` no se suben al repositorio: se regeneran con los scripts.
 `backend/Datos/modelo.json` describe el orden y el significado de las variables del modelo, y
 `casos_prueba.json` trae predicciones de referencia para comprobar que el backend calcula lo mismo.
+
+## API
+
+```bash
+cd backend && dotnet run      # http://localhost:5014
+cd tests && dotnet test       # 24 tests, incluidas las predicciones de referencia de Python
+```
+
+| Endpoint | Qué devuelve |
+|---|---|
+| `GET /api/info` | Fecha de los datos, fuente e informe del modelo |
+| `GET /api/jugadores?buscar=alcaraz` | Jugadores activos cuyo nombre contiene el texto |
+| `GET /api/jugadores/top?superficie=Clay` | Mejores por Elo (General, Hard, Clay o Grass) |
+| `GET /api/jugadores/{id}` | Ficha: datos, Elo, estadísticas por ventana y superficie, últimos partidos |
+| `GET /api/jugadores/{id}/elo` | Evolución del Elo partido a partido |
+| `GET /api/h2h/{a}/{b}` | Enfrentamiento directo: balance total, por superficie y lista de partidos |
+| `POST /api/prediccion` | Probabilidad de cada jugador, la del Elo, el H2H y una comparativa de estadísticas |
+
+Ejemplos listos para lanzar en [backend/TenisPredictor.Api.http](backend/TenisPredictor.Api.http).
+En desarrollo, el esquema OpenAPI está en `/openapi/v1.json`.
 
 ## Resultados (partidos del circuito principal 2023-2026, nunca vistos al entrenar)
 
