@@ -1,0 +1,112 @@
+<section class="partido contenedor" aria-label="Elige el partido">
+  <div class="jugadores">
+    <app-buscador-jugador etiqueta="Jugador" [jugador]="estado.jugadorA()" (elegido)="estado.jugadorA.set($event)" />
+    <button type="button" class="intercambiar" (click)="estado.intercambiar()" aria-label="Intercambiar jugadores" title="Intercambiar jugadores">⇄</button>
+    <app-buscador-jugador etiqueta="Rival" [jugador]="estado.jugadorB()" (elegido)="estado.jugadorB.set($event)" />
+  </div>
+
+  <div class="condiciones">
+    <fieldset class="superficies">
+      <legend class="solo-lector">Superficie</legend>
+      @for (s of superficies; track s.valor) {
+        <label [class.elegida]="estado.superficie() === s.valor" [attr.data-superficie]="s.valor">
+          <input type="radio" name="superficie" [value]="s.valor" [checked]="estado.superficie() === s.valor"
+                 (change)="estado.superficie.set(s.valor)" />
+          {{ s.nombre }}
+        </label>
+      }
+    </fieldset>
+
+    <label class="desplegable">
+      <span>Torneo</span>
+      <select [value]="estado.nivel()" (change)="cambiarNivel($any($event.target).value)">
+        @for (n of niveles; track n.valor) {
+          <option [value]="n.valor" [selected]="estado.nivel() === n.valor">{{ n.nombre }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="desplegable">
+      <span>Ronda</span>
+      <select [value]="estado.ronda()" (change)="estado.ronda.set($any($event.target).value)">
+        @for (r of rondas; track r.valor) {
+          <option [value]="r.valor" [selected]="estado.ronda() === r.valor">{{ r.nombre }}</option>
+        }
+      </select>
+    </label>
+  </div>
+</section>
+
+@if (error()) {
+  <p class="contenedor error" role="alert">{{ error() }}</p>
+}
+
+@if (prediccion(); as p) {
+  <section class="resultado contenedor" [class.cargando]="cargando()" aria-live="polite">
+    <h1 class="solo-lector">Pronóstico: {{ p.jugadorA.nombre }} contra {{ p.jugadorB.nombre }}</h1>
+
+    <div class="nombres">
+      <a class="marcador" [routerLink]="['/jugador', p.jugadorA.id]">{{ p.jugadorA.nombre }}</a>
+      <a class="marcador derecha" [routerLink]="['/jugador', p.jugadorB.id]">{{ p.jugadorB.nombre }}</a>
+    </div>
+    <div class="detalle-nombres secundario cifras">
+      <span>{{ p.jugadorA.pais }}{{ p.jugadorA.ranking ? ', n.º ' + p.jugadorA.ranking + ' ATP' : '' }}</span>
+      <span class="derecha">{{ p.jugadorB.pais }}{{ p.jugadorB.ranking ? ', n.º ' + p.jugadorB.ranking + ' ATP' : '' }}</span>
+    </div>
+
+    <app-pista [probabilidadA]="p.probabilidadA" [nombreA]="p.jugadorA.nombre" [nombreB]="p.jugadorB.nombre" />
+
+    <p class="lectura">
+      <strong>{{ favorito()?.nombre }}</strong> es favorito en {{ nombreSuperficie[estado.superficie()]?.toLowerCase() }},
+      {{ nombreRonda[estado.ronda()]?.toLowerCase() }} al mejor de {{ mejorDe() }} sets.
+      Solo con el Elo, {{ p.jugadorA.nombre }} tendría un {{ probabilidad(p.probabilidadEloA) }}.
+    </p>
+
+    <div class="columnas">
+      <section>
+        <h2 class="titulo-seccion">Cara a cara</h2>
+        <app-comparativa [datos]="p.comparativa" />
+      </section>
+
+      <section>
+        <h2 class="titulo-seccion">Enfrentamientos</h2>
+        @if (h2h(); as h) {
+          @if (h.partidos.length) {
+            <p class="balance marcador">
+              <span>{{ h.total.victoriasA }}</span><span class="guion">–</span><span>{{ h.total.victoriasB }}</span>
+            </p>
+            <p class="secundario por-superficie">
+              @for (s of superficies; track s.valor) {
+                @if (h.porSuperficie[s.valor]; as b) {
+                  <span>{{ s.nombre }} {{ b.victoriasA }}–{{ b.victoriasB }}</span>
+                }
+              }
+            </p>
+            <div class="desplazable">
+              <table class="tabla">
+                <thead><tr><th>Fecha</th><th>Torneo</th><th>Ganador</th><th>Resultado</th></tr></thead>
+                <tbody>
+                  @for (m of h.partidos; track m.fecha + m.ronda) {
+                    <tr>
+                      <td class="fecha">{{ fecha(m.fecha) }}</td>
+                      <td>{{ m.torneo }} <span class="secundario">{{ nombreRonda[m.ronda] ?? m.ronda }}</span></td>
+                      <td>{{ m.ganadorNombre }}</td>
+                      <td class="cifras">{{ m.marcador }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="secundario">Nunca se han enfrentado en el circuito.</p>
+          }
+        }
+      </section>
+    </div>
+
+    <p class="nota secundario">
+      Datos hasta el {{ fecha(p.fechaDatos) }}. El modelo acierta el 67 % de los partidos de 2023 a 2026;
+      la casa de apuestas Pinnacle, el 69 %.
+    </p>
+  </section>
+}

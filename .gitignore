@@ -5,3 +5,6 @@ data-pipeline/data/
 *.onnx
 bin/
 obj/
+backend/wwwroot/
+node_modules/
+.angular/

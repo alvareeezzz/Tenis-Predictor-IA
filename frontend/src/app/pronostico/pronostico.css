@@ -1,0 +1,57 @@
+.partido { padding-top: 24px; display: grid; gap: 16px; }
+
+.jugadores { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 12px; }
+.intercambiar {
+  width: 44px; height: 44px; border: 1px solid var(--linea); border-radius: 50%;
+  background: var(--papel); cursor: pointer; font-size: 1.2rem;
+}
+.intercambiar:hover { border-color: var(--pista-texto); color: var(--pista-texto); }
+
+.condiciones { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 20px; }
+
+/* Superficies: tres muestras de pista, la elegida rellena con su color */
+.superficies { border: 0; display: flex; gap: 6px; }
+.superficies label {
+  position: relative; cursor: pointer; padding: 9px 16px; border-radius: 4px;
+  border: 1px solid var(--linea); background: var(--papel); font-weight: 600;
+}
+.superficies input { position: absolute; opacity: 0; pointer-events: none; }
+.superficies label:has(input:focus-visible) { outline: 2px solid var(--pista-texto); outline-offset: 2px; }
+.superficies label.elegida { background: var(--pista); border-color: var(--pista); color: var(--sobre-pista); }
+
+.desplegable { display: grid; gap: 4px; font-size: 0.875rem; color: var(--gris); }
+.desplegable select {
+  padding: 9px 10px; border: 1px solid var(--linea); border-radius: 4px; background: var(--papel);
+  color: var(--tinta); font-size: 1rem; min-width: 11rem;
+}
+
+.resultado { padding-top: 32px; padding-bottom: 48px; transition: opacity 0.2s; }
+.resultado.cargando { opacity: 0.55; }
+
+.nombres, .detalle-nombres { display: flex; justify-content: space-between; gap: 16px; }
+.nombres a { font-size: clamp(1.6rem, 5vw, 3rem); line-height: 1; color: var(--tinta); text-decoration: none; }
+.nombres a:hover { color: var(--pista-texto); }
+.detalle-nombres { margin: 6px 0 10px; font-size: 0.95rem; }
+.derecha { text-align: right; }
+
+.lectura { margin: 16px 0 36px; font-size: 1.125rem; max-width: 62ch; }
+
+.columnas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; }
+
+.balance { font-size: 3.5rem; line-height: 1; display: flex; gap: 12px; }
+.guion { color: var(--gris); }
+.por-superficie { display: flex; gap: 16px; margin: 8px 0 16px; }
+
+.nota { margin-top: 40px; font-size: 0.9rem; max-width: 70ch; }
+
+@media (max-width: 760px) {
+  .columnas { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+}
+@media (max-width: 520px) {
+  .jugadores { grid-template-columns: 1fr; }
+  .intercambiar { justify-self: center; transform: rotate(90deg); }
+  .superficies { flex: 1 1 100%; }
+  .superficies label { flex: 1; text-align: center; padding-inline: 8px; }
+  .desplegable { flex: 1 1 40%; }
+  .desplegable select { min-width: 0; width: 100%; }
+}

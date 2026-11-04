@@ -6,7 +6,7 @@ enfrentamientos directos y estadísticas individuales (aces, % de saque, puntos 
 - **data-pipeline/** (Python): descarga de datos, cálculo de Elo y estadísticas, entrenamiento del modelo
 - **backend/** (ASP.NET Core .NET 10): API de jugadores, H2H y predicción con el modelo ONNX
 - **tests/** (xUnit): comprueba que la API da la misma probabilidad que Python
-- **frontend/** (Angular 20): buscador, comparador y pronóstico *(pendiente)*
+- **frontend/** (Angular 20): pronóstico sobre una pista, ficha de cada jugador y ranking Elo
 
 ## Puesta en marcha
 
@@ -44,6 +44,21 @@ cd tests && dotnet test       # 24 tests, incluidas las predicciones de referenc
 
 Ejemplos listos para lanzar en [backend/TenisPredictor.Api.http](backend/TenisPredictor.Api.http).
 En desarrollo, el esquema OpenAPI está en `/openapi/v1.json`.
+
+## Web
+
+```bash
+cd frontend && npm install
+npx ng serve                  # http://localhost:4200, con la API arrancada (redirige /api a :5014)
+npx ng build                  # compila en backend/wwwroot: la API sirve la web en http://localhost:5014
+```
+
+- **Pronóstico**: elige jugador, rival, superficie, torneo y ronda. La probabilidad se dibuja como
+  una pista: la red se coloca donde cae el pronóstico. Debajo, las estadísticas cara a cara y los
+  enfrentamientos entre ambos. El color de la app sigue a la superficie (dura, tierra o hierba).
+- **Ficha del jugador**: Elo por superficie, su evolución, estadísticas de saque y resto por
+  superficie y últimos partidos.
+- **Ranking Elo**: los 50 mejores por Elo, en general o en cada superficie.
 
 ## Resultados (partidos del circuito principal 2023-2026, nunca vistos al entrenar)
 

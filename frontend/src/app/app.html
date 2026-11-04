@@ -1,0 +1,23 @@
+<header class="barra">
+  <div class="contenedor interior">
+    <a routerLink="/" class="logo marcador">Tenis Predictor</a>
+    <nav aria-label="Secciones">
+      <a routerLink="/" routerLinkActive="actual" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Pronóstico</a>
+      <a routerLink="/ranking" routerLinkActive="actual" ariaCurrentWhenActive="page">Ranking Elo</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="pie contenedor secundario">
+  <p>
+    Partidos, rankings y estadísticas ATP de
+    <a href="https://github.com/JeffSackmann/tennis_atp" rel="noopener">Jeff Sackmann</a>
+    (<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener">CC BY-NC-SA 4.0</a>), uso no comercial.
+    Cuotas de <a href="https://www.valuebetennis.com/donnees.htm" rel="noopener">Valuebetennis</a> (CC BY 4.0).
+    Los pronósticos son estimaciones de un modelo estadístico, no consejos de apuesta.
+  </p>
+</footer>

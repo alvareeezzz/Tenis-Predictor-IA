@@ -1,0 +1,95 @@
+/* Identidad: la pista. Todo es neutro (tiza, tinta) salvo el color de la superficie elegida,
+   que es el único acento y cambia con ella: azul acrílico, ladrillo o césped.
+   Tipografía: Archivo en dos anchuras, estrecha para nombres y cifras (marcador) y normal para leer. */
+:root {
+  --fondo: #eef0ed;        /* tiza */
+  --papel: #fafbf9;
+  --tinta: #17201b;
+  --gris: #5b645e;         /* 5,4:1 sobre --fondo */
+  --linea: #d3d9d2;
+  --linea-pista: #ffffff;
+  --error: #a32014;
+
+  /* Superficie (por defecto, pista dura) */
+  --pista: #2f5d9e;        /* relleno de pista, con texto blanco encima: 6,4:1 */
+  --pista-texto: #2a548f;  /* el mismo color como texto o enlace sobre --fondo */
+  --sobre-pista: #ffffff;
+
+  --letra: 'Archivo Variable', system-ui, sans-serif;
+  --estrecha: 72%;         /* font-stretch para nombres y cifras */
+  --ancho: 980px;
+  color-scheme: light;
+}
+:root[data-superficie="Clay"] { --pista: #b0502a; --pista-texto: #94401c; }
+:root[data-superficie="Grass"] { --pista: #3d6b38; --pista-texto: #33602f; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #121814;
+    --papel: #1a211c;
+    --tinta: #e6ebe6;
+    --gris: #9ca69f;
+    --linea: #2c3530;
+    --error: #ff8a7a;
+    --pista: #2b548f;
+    --pista-texto: #8db3f0;
+    color-scheme: dark;
+  }
+  :root[data-superficie="Clay"] { --pista: #a14a26; --pista-texto: #f0a27a; }
+  :root[data-superficie="Grass"] { --pista: #386334; --pista-texto: #93c98a; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--letra);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  background: var(--fondo);
+  color: var(--tinta);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { line-height: 1.15; text-wrap: balance; font-weight: 700; }
+p { text-wrap: pretty; }
+
+a { color: var(--pista-texto); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--pista-texto); outline-offset: 3px; border-radius: 2px; }
+
+button, input, select { font: inherit; color: inherit; }
+
+.contenedor { max-width: var(--ancho); margin: 0 auto; padding: 0 16px; }
+
+/* Nombres y cifras de marcador */
+.marcador {
+  font-stretch: var(--estrecha);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cifras { font-variant-numeric: tabular-nums; }
+
+.secundario { color: var(--gris); }
+
+.titulo-seccion { font-size: 1.375rem; margin-bottom: 14px; }
+
+.error { color: var(--error); }
+
+/* Tablas de datos: partidos, estadísticas */
+.tabla { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.tabla th { text-align: left; font-weight: 600; color: var(--gris); padding: 6px 8px; border-bottom: 1px solid var(--linea); }
+.tabla td { padding: 7px 8px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+.tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla .fecha { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.desplazable { overflow-x: auto; }
+
+.solo-lector {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

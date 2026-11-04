@@ -1,0 +1,77 @@
+<div class="contenedor pagina">
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  @if (ficha(); as f) {
+    <header class="cabecera">
+      <div>
+        <h1 class="marcador">{{ f.jugador.nombre }}</h1>
+        <p class="secundario datos">
+          @if (f.jugador.ranking) { <span>N.º {{ f.jugador.ranking }} del ranking ATP ({{ entero(f.jugador.puntosRanking) }} puntos)</span> }
+          @if (f.jugador.pais) { <span>{{ f.jugador.pais }}</span> }
+          @if (edad()) { <span>{{ edad() }} años</span> }
+          @if (f.jugador.altura) { <span>{{ f.jugador.altura }} cm</span> }
+          @if (f.jugador.mano) { <span>{{ f.jugador.mano === 'L' ? 'Zurdo' : 'Diestro' }}</span> }
+        </p>
+      </div>
+      @if (f.jugador.activo) {
+        <button type="button" class="boton" (click)="pronosticar()">Pronosticar un partido suyo</button>
+      }
+    </header>
+
+    <dl class="elos">
+      <div><dt>Elo general</dt><dd class="marcador">{{ entero(f.jugador.elo.general) }}</dd></div>
+      <div><dt>En dura</dt><dd class="marcador">{{ entero(f.jugador.elo.dura) }}</dd></div>
+      <div><dt>En tierra</dt><dd class="marcador">{{ entero(f.jugador.elo.tierra) }}</dd></div>
+      <div><dt>En hierba</dt><dd class="marcador">{{ entero(f.jugador.elo.hierba) }}</dd></div>
+    </dl>
+
+    @if (elo().length > 1) {
+      <section>
+        <h2 class="titulo-seccion">Evolución de su Elo</h2>
+        <app-grafica-elo [puntos]="elo()" />
+      </section>
+    }
+
+    <section>
+      <h2 class="titulo-seccion">Estadísticas</h2>
+      <div class="desplazable">
+        <table class="tabla">
+          <thead>
+            <tr><th></th>@for (c of columnas; track c.nombre) { <th class="num">{{ c.nombre }}</th> }</tr>
+          </thead>
+          <tbody>
+            @for (fila of tabla(); track fila.nombre) {
+              <tr><td>{{ fila.nombre }}</td>@for (v of fila.valores; track $index) { <td class="num">{{ v }}</td> }</tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="titulo-seccion">Últimos partidos</h2>
+      <div class="desplazable">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Torneo</th><th>Rival</th><th>Resultado</th></tr></thead>
+          <tbody>
+            @for (m of f.ultimosPartidos; track m.fecha + m.ronda + m.torneo) {
+              @let gano = m.ganadorId === f.jugador.id;
+              <tr>
+                <td class="fecha">{{ fecha(m.fecha) }}</td>
+                <td>{{ m.torneo }} <span class="secundario">{{ nombreRonda[m.ronda] ?? m.ronda }}, {{ nombreSuperficie[m.superficie ?? ''] ?? '' }}</span></td>
+                <td>
+                  <a [routerLink]="['/jugador', gano ? m.perdedorId : m.ganadorId]">{{ gano ? m.perdedorNombre : m.ganadorNombre }}</a>
+                </td>
+                <td class="cifras"><span [class.gano]="gano">{{ gano ? 'Ganó' : 'Perdió' }}</span> {{ m.marcador }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else if (!error()) {
+    <p class="secundario">Cargando la ficha…</p>
+  }
+</div>
