@@ -17,7 +17,12 @@ python -m venv .venv
 .venv/Scripts/python data-pipeline/03_elo.py         # Elo general y por superficie
 .venv/Scripts/python data-pipeline/04_features.py    # H2H, estadísticas de saque y resto, forma, cansancio
 .venv/Scripts/python data-pipeline/05_entrenar.py    # entrena y evalúa los modelos (~5 min)
+.venv/Scripts/python data-pipeline/06_exportar.py    # genera backend/Datos/tenis.db y modelo.onnx
 ```
+
+`tenis.db` (~60 MB) y `modelo.onnx` no se suben al repositorio: se regeneran con los scripts.
+`backend/Datos/modelo.json` describe el orden y el significado de las variables del modelo, y
+`casos_prueba.json` trae predicciones de referencia para comprobar que el backend calcula lo mismo.
 
 ## Resultados (partidos del circuito principal 2023-2026, nunca vistos al entrenar)
 

@@ -1,0 +1,200 @@
+[
+  {
+    "jugador_a": 206173,
+    "jugador_b": 207989,
+    "nombre_a": "Jannik Sinner",
+    "nombre_b": "Carlos Alcaraz",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.659085
+  },
+  {
+    "jugador_a": 206173,
+    "jugador_b": 207989,
+    "nombre_a": "Jannik Sinner",
+    "nombre_b": "Carlos Alcaraz",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.61296
+  },
+  {
+    "jugador_a": 206173,
+    "jugador_b": 207989,
+    "nombre_a": "Jannik Sinner",
+    "nombre_b": "Carlos Alcaraz",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.572735
+  },
+  {
+    "jugador_a": 100644,
+    "jugador_b": 200000,
+    "nombre_a": "Alexander Zverev",
+    "nombre_b": "Felix Auger Aliassime",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.638902
+  },
+  {
+    "jugador_a": 100644,
+    "jugador_b": 200000,
+    "nombre_a": "Alexander Zverev",
+    "nombre_b": "Felix Auger Aliassime",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.716895
+  },
+  {
+    "jugador_a": 100644,
+    "jugador_b": 200000,
+    "nombre_a": "Alexander Zverev",
+    "nombre_b": "Felix Auger Aliassime",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.633495
+  },
+  {
+    "jugador_a": 210097,
+    "jugador_b": 200282,
+    "nombre_a": "Ben Shelton",
+    "nombre_b": "Alex De Minaur",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.434319
+  },
+  {
+    "jugador_a": 210097,
+    "jugador_b": 200282,
+    "nombre_a": "Ben Shelton",
+    "nombre_b": "Alex De Minaur",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.39059
+  },
+  {
+    "jugador_a": 210097,
+    "jugador_b": 200282,
+    "nombre_a": "Ben Shelton",
+    "nombre_b": "Alex De Minaur",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.410139
+  },
+  {
+    "jugador_a": 104925,
+    "jugador_b": 106421,
+    "nombre_a": "Novak Djokovic",
+    "nombre_b": "Daniil Medvedev",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.614639
+  },
+  {
+    "jugador_a": 104925,
+    "jugador_b": 106421,
+    "nombre_a": "Novak Djokovic",
+    "nombre_b": "Daniil Medvedev",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.705492
+  },
+  {
+    "jugador_a": 104925,
+    "jugador_b": 106421,
+    "nombre_a": "Novak Djokovic",
+    "nombre_b": "Daniil Medvedev",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.717996
+  },
+  {
+    "jugador_a": 126203,
+    "jugador_b": 207925,
+    "nombre_a": "Taylor Fritz",
+    "nombre_b": "Flavio Cobolli",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.664554
+  },
+  {
+    "jugador_a": 126203,
+    "jugador_b": 207925,
+    "nombre_a": "Taylor Fritz",
+    "nombre_b": "Flavio Cobolli",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.3704
+  },
+  {
+    "jugador_a": 126203,
+    "jugador_b": 207925,
+    "nombre_a": "Taylor Fritz",
+    "nombre_b": "Flavio Cobolli",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.681987
+  },
+  {
+    "jugador_a": 122330,
+    "jugador_b": 208103,
+    "nombre_a": "Alexander Bublik",
+    "nombre_b": "Jiri Lehecka",
+    "superficie": "Hard",
+    "nivel": "M",
+    "ronda": "QF",
+    "mejor_de": 3,
+    "prob_a": 0.427358
+  },
+  {
+    "jugador_a": 122330,
+    "jugador_b": 208103,
+    "nombre_a": "Alexander Bublik",
+    "nombre_b": "Jiri Lehecka",
+    "superficie": "Clay",
+    "nivel": "G",
+    "ronda": "F",
+    "mejor_de": 5,
+    "prob_a": 0.426115
+  },
+  {
+    "jugador_a": 122330,
+    "jugador_b": 208103,
+    "nombre_a": "Alexander Bublik",
+    "nombre_b": "Jiri Lehecka",
+    "superficie": "Grass",
+    "nivel": "A",
+    "ronda": "R16",
+    "mejor_de": 3,
+    "prob_a": 0.495159
+  }
+]
