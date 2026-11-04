@@ -1,13 +1,17 @@
 """Fase 1 - Une y limpia los partidos ATP en una sola tabla ordenada cronológicamente.
 
-Incluye circuito principal, Challengers y previas. Salida: data/partidos.parquet, un partido
-por fila con las columnas originales de Sackmann más `fecha`, `orden` (posición cronológica),
-`superficie_elo`, `final_normal` y `circuito_principal` (cuadro final de un torneo ATP).
+Incluye circuito principal, Challengers y previas: el archivo de Sackmann (hasta junio de 2026)
+más los resultados posteriores de Valuebetennis. Salida: data/partidos.parquet, un partido por
+fila con las columnas originales de Sackmann más `fecha`, `orden` (posición cronológica),
+`superficie_elo`, `final_normal`, `circuito_principal` (cuadro final de un torneo ATP) y `fuente`.
 """
 
 import glob
+import re
+import unicodedata
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 DATOS = Path(__file__).parent / "data"
@@ -15,11 +19,105 @@ DATOS = Path(__file__).parent / "data"
 # Sackmann solo guarda la fecha de inicio del torneo: dentro de un torneo el orden lo da la ronda.
 ORDEN_RONDAS = {"Q1": -4, "Q2": -3, "Q3": -2, "Q4": -1, "ER": 0, "RR": 1, "R128": 2, "R64": 3, "R32": 4, "R16": 5, "QF": 6, "SF": 7, "BR": 8, "F": 9}
 
+# Categorías de Valuebetennis → nivel de torneo de Sackmann. Los ITF no están en el archivo de
+# Sackmann (ni en el historial del Elo), así que se dejan fuera.
+NIVEL_RECIENTES = {"Grand Chelem": "G", "Masters": "M", "Main tour": "A", "Challenger": "C", "Coupe Davis / BJK Cup": "D"}
+PREFIJO_SACKMANN = "sackmann:atp:"
+
+PATRON_SET = re.compile(r"(\d+)-(\d+)")
+
 
 def cargar_partidos() -> pd.DataFrame:
     archivos = sorted(glob.glob(str(DATOS / "raw" / "atp_matches_[12]*.csv")))
     archivos += sorted(glob.glob(str(DATOS / "raw" / "atp_matches_qual_chall_*.csv")))
-    return pd.concat((pd.read_csv(a, low_memory=False) for a in archivos), ignore_index=True)
+    df = pd.concat((pd.read_csv(a, low_memory=False) for a in archivos), ignore_index=True)
+    df["fuente"] = "sackmann"
+    return df
+
+
+def cargar_recientes(archivo: pd.DataFrame) -> pd.DataFrame:
+    """Resultados de Valuebetennis posteriores al archivo de Sackmann, en su mismo formato.
+
+    No traen ronda, minutos, ranking ni estadísticas de saque. El orden dentro del torneo sale
+    del día exacto de cada partido y la fecha del torneo es la de su primer partido, como en Sackmann.
+    """
+    rutas = sorted(glob.glob(str(DATOS / "raw" / "recientes" / "atp_*.csv.gz")))
+    if not rutas:
+        return pd.DataFrame()
+    d = pd.concat((pd.read_csv(r, low_memory=False) for r in rutas), ignore_index=True)
+    d = d[d["record_id"].str.startswith("vb:") & d["category"].isin(NIVEL_RECIENTES)]
+
+    # Identidad: la verificada por el repositorio de origen o, si no la hay, un único jugador
+    # del archivo con el mismo nombre y apellido que haya jugado en 2025-2026
+    reconocidos = jugadores_recientes(archivo)
+    recuperados = 0
+    for lado in ("winner", "loser"):
+        sin_verificar = ~d[f"{lado}_id"].str.startswith(PREFIJO_SACKMANN)
+        nuevo = d.loc[sin_verificar, f"{lado}_name"].map(lambda n: reconocidos.get(clave_nombre(n)))
+        d.loc[sin_verificar & nuevo.reindex(d.index).notna(), f"{lado}_id"] = PREFIJO_SACKMANN + nuevo.dropna().astype(int).astype(str)
+        recuperados += nuevo.notna().sum()
+    validos = d["winner_id"].str.startswith(PREFIJO_SACKMANN) & d["loser_id"].str.startswith(PREFIJO_SACKMANN)
+    descartados = (~validos).sum()
+    d = d[validos].copy()
+
+    dia = pd.to_datetime(d["match_date"])
+    inicio = dia.groupby(d["tourney_id"]).transform("min")
+    sets_ganador = d["score"].map(lambda s: sum(int(a) > int(b) for a, b in PATRON_SET.findall(s)))
+    nivel = d["category"].map(NIVEL_RECIENTES)
+    r = pd.DataFrame({
+        "tourney_id": d["tourney_id"], "tourney_name": d["tourney_name"], "surface": d["surface"],
+        "tourney_level": nivel, "tourney_date": inicio.dt.strftime("%Y%m%d").astype(int),
+        "match_num": (dia - inicio).dt.days,
+        "winner_id": d["winner_id"].str.removeprefix(PREFIJO_SACKMANN).astype(int),
+        "loser_id": d["loser_id"].str.removeprefix(PREFIJO_SACKMANN).astype(int),
+        "winner_name": d["winner_name"], "loser_name": d["loser_name"], "score": d["score"],
+        # En un Grand Slam, ganar con 3 sets significa cuadro final al mejor de 5
+        "best_of": np.where((nivel == "G") & (sets_ganador == 3), 5, 3),
+        "round": "",
+        "fuente": "valuebetennis",
+    })
+    # Lo que ya está en el archivo de Sackmann no se repite
+    r = r[r["tourney_date"] > archivo["tourney_date"].max()]
+    print(f"Resultados recientes: {len(r):,} partidos ({recuperados:,} jugadores identificados por nombre, "
+          f"{descartados:,} partidos descartados por jugadores sin identificar)")
+    return r
+
+
+def clave_nombre(nombre: str) -> tuple[str, str] | None:
+    """Nombre y último apellido, sin tildes ni mayúsculas: "Taylor Harry Fritz" → ("taylor", "fritz")."""
+    limpio = unicodedata.normalize("NFKD", str(nombre)).encode("ascii", "ignore").decode().lower()
+    partes = re.sub(r"[^a-z ]", " ", limpio).split()
+    return (partes[0], partes[-1]) if len(partes) >= 2 else None
+
+
+def jugadores_recientes(archivo: pd.DataFrame) -> dict[tuple[str, str], int]:
+    """Jugadores del archivo con partidos en 2025-2026, por nombre. Los nombres repetidos se descartan."""
+    recientes = archivo[archivo["tourney_date"] >= 20250101]
+    nombres = pd.concat([
+        recientes[["winner_id", "winner_name"]].set_axis(["id", "nombre"], axis=1),
+        recientes[["loser_id", "loser_name"]].set_axis(["id", "nombre"], axis=1),
+    ]).drop_duplicates("id")
+    nombres["clave"] = nombres["nombre"].map(clave_nombre)
+    unicos = nombres.dropna(subset=["clave"]).drop_duplicates("clave", keep=False)
+    return dict(zip(unicos["clave"], unicos["id"].astype(int)))
+
+
+def juegos_totales(marcador: str) -> int:
+    return sum(int(a) + int(b) for a, b in PATRON_SET.findall(marcador))
+
+
+def estimar_minutos(df: pd.DataFrame) -> pd.Series:
+    """Duración que falta (resultados recientes) a partir de los juegos jugados.
+
+    El cansancio del modelo se mide en minutos: sin esto, un jugador con cuatro partidos en la
+    última semana parecería no haber jugado ni un minuto.
+    """
+    juegos = df["score"].map(juegos_totales)
+    con_duracion = df["minutes"].notna() & (df["minutes"] > 0) & (juegos > 0) & df["final_normal"]
+    minutos_por_juego = df.loc[con_duracion, "minutes"].sum() / juegos[con_duracion].sum()
+    # Solo en los recientes: los huecos de Sackmann se quedan como los vio el modelo al entrenar
+    estimar = df["minutes"].isna() & (df["fuente"] == "valuebetennis")
+    return df["minutes"].mask(estimar, (juegos * minutos_por_juego).round())
 
 
 def limpiar(df: pd.DataFrame) -> pd.DataFrame:
@@ -41,6 +139,7 @@ def limpiar(df: pd.DataFrame) -> pd.DataFrame:
 
     # Partido terminado con normalidad (sin abandono ni descalificación).
     df["final_normal"] = ~df["score"].str.contains("RET|DEF|Played|unfinished", case=False)
+    df["minutes"] = estimar_minutos(df)
 
     df = df.sort_values(["fecha", "tourney_id", "ronda_orden", "match_num"], kind="stable")
     df = df.reset_index(drop=True)
@@ -49,7 +148,8 @@ def limpiar(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    df = limpiar(cargar_partidos())
+    archivo = cargar_partidos()
+    df = limpiar(pd.concat([archivo, cargar_recientes(archivo)], ignore_index=True))
     df.to_parquet(DATOS / "partidos.parquet", index=False)
     print(f"{len(df):,} partidos | {df['fecha'].min():%Y-%m-%d} → {df['fecha'].max():%Y-%m-%d}")
     print(f"Circuito principal: {df['circuito_principal'].sum():,} | Challengers y previas: {(~df['circuito_principal']).sum():,}")

@@ -90,3 +90,26 @@ Partidos, rankings y jugadores ATP recopilados por **Jeff Sackmann**
 [Aneeshers/tennis-sackmann-archive](https://github.com/Aneeshers/tennis-sackmann-archive).
 Licencia [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/): uso no comercial.
 Los datos no se guardan en este repositorio; se descargan con el script.
+
+El archivo de Sackmann llega hasta junio de 2026. Los resultados posteriores son de
+[Valuebetennis](https://www.valuebetennis.com/donnees.htm) (CC BY 4.0), ya unidos a los jugadores de
+Sackmann por [sumeetamin/tennis-history-data](https://github.com/sumeetamin/tennis-history-data),
+que se actualiza a diario. Esos resultados no traen estadísticas de saque ni duración (se estima por
+los juegos jugados), y solo cubren parte de los partidos de cada torneo.
+
+## Actualización semanal
+
+```bash
+# con la API parada (tiene abierta tenis.db)
+.venv/Scripts/python data-pipeline/actualizar.py               # ~2 min: resultados nuevos, Elo, estadísticas, exportación
+.venv/Scripts/python data-pipeline/actualizar.py --reentrenar  # cada pocos meses: también reentrena y compara con las cuotas
+```
+
+Con datos de menos de 14 días, el pronóstico tiene en cuenta el cansancio y la inactividad reales
+de cada jugador; con datos más viejos, esas variables se ponen iguales para todos.
+
+Limitaciones conocidas:
+- El ranking ATP se queda en el del 8 de junio de 2026: ninguna fuente abierta publica los posteriores.
+  El Elo, que es lo que más pesa en el modelo, sí se actualiza con cada resultado.
+- Los jugadores de los resultados recientes sin identidad verificada se emparejan por nombre y
+  apellido solo si coinciden con un único jugador activo; si no, el partido se descarta.

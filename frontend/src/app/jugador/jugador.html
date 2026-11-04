@@ -60,7 +60,7 @@
               @let gano = m.ganadorId === f.jugador.id;
               <tr>
                 <td class="fecha">{{ fecha(m.fecha) }}</td>
-                <td>{{ m.torneo }} <span class="secundario">{{ nombreRonda[m.ronda] ?? m.ronda }}, {{ nombreSuperficie[m.superficie ?? ''] ?? '' }}</span></td>
+                <td>{{ m.torneo }} <span class="secundario">{{ m.ronda ? (nombreRonda[m.ronda] ?? m.ronda) + ', ' : '' }}{{ nombreSuperficie[m.superficie ?? ''] ?? '' }}</span></td>
                 <td>
                   <a [routerLink]="['/jugador', gano ? m.perdedorId : m.ganadorId]">{{ gano ? m.perdedorNombre : m.ganadorNombre }}</a>
                 </td>

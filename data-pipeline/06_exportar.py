@@ -30,9 +30,11 @@ SALIDA = RAIZ.parent / "backend" / "Datos"
 SUPERFICIES = ["Hard", "Clay", "Grass"]
 DIAS_ACTIVO = 730  # solo se exporta el estado de quien ha jugado en los 2 últimos años
 
-# El cansancio y la inactividad solo tienen sentido si los datos están al día: medidos en la
-# fecha de los datos, un jugador que no jugó el último torneo parecería lesionado meses después.
-# Se ponen iguales para todos (una semana normal de descanso) y así no inclinan la predicción.
+# El cansancio y la inactividad solo tienen sentido si los datos están al día: con datos viejos,
+# un jugador que no jugó el último torneo parecería lesionado meses después. Si los datos tienen
+# más de DIAS_DATOS_FRESCOS, se ponen iguales para todos (una semana normal de descanso) y así no
+# inclinan la predicción. Con la actualización semanal (actualizar.py) se usan los valores reales.
+DIAS_DATOS_FRESCOS = 14
 ACTIVIDAD_NEUTRA = {"partidos_14d": 0, "minutos_14d": 0, "minutos_torneo": 0, "dias_desde_ultimo_torneo": 7}
 
 
@@ -69,8 +71,15 @@ def estado_jugadores(partidos, elo_partidos, elo_actual, jugadores, ranking) -> 
         bloques.append(f)
     estado = pd.concat(bloques, ignore_index=True)
     estado = estado.drop(columns=[c for c in estado if c.startswith("h2h")])  # el H2H depende del rival
-    for col, valor in ACTIVIDAD_NEUTRA.items():
-        estado[col] = valor
+    antiguedad = (pd.Timestamp.today().normalize() - fecha_datos).days
+    if antiguedad > DIAS_DATOS_FRESCOS:
+        print(f"  Datos de hace {antiguedad} días: cansancio e inactividad neutros para todos")
+        for col, valor in ACTIVIDAD_NEUTRA.items():
+            estado[col] = valor
+    else:
+        print(f"  Datos de hace {antiguedad} días: se usan el cansancio y la inactividad reales")
+        # Desde el último torneo hasta hoy, no hasta el inicio del último torneo
+        estado["dias_desde_ultimo_torneo"] = (estado["dias_desde_ultimo_torneo"] + antiguedad).clip(upper=365)
 
     # Elo, ranking y datos personales: las mismas transformaciones que en preparar() de 05_entrenar.py
     estado = estado.merge(elo_actual, on="player_id", how="left")
@@ -229,12 +238,15 @@ def main() -> None:
         "fecha_datos": f"{fecha_datos:%Y-%m-%d}",
         "fecha_ranking": f"{pd.to_datetime(str(fecha_ranking)):%Y-%m-%d}",
         "peso_superficie": str(entrenar.PESO_SUPERFICIE),
-        "fuente": "Jeff Sackmann (tennis_atp), CC BY-NC-SA 4.0",
+        "fuente": "Jeff Sackmann (tennis_atp), CC BY-NC-SA 4.0; resultados recientes de Valuebetennis, CC BY 4.0",
         "informe_modelo": informe,
     }
 
     ruta_db = SALIDA / "tenis.db"
-    ruta_db.unlink(missing_ok=True)
+    try:
+        ruta_db.unlink(missing_ok=True)
+    except PermissionError:
+        raise SystemExit("tenis.db está abierta: para la API (dotnet run) antes de exportar y arráncala después.")
     with sqlite3.connect(ruta_db) as con:
         jugadores_db.to_sql("jugadores", con, index=False)
         estado[["player_id", "superficie", *bases_estado]].to_sql("estado_jugador", con, index=False)
