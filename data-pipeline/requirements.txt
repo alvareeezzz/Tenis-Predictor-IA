@@ -1,0 +1,11 @@
+pandas
+numpy
+requests
+scikit-learn
+xgboost
+onnx
+onnxruntime
+onnxmltools
+skl2onnx
+matplotlib
+openpyxl
