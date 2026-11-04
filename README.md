@@ -108,6 +108,9 @@ los juegos jugados), y solo cubren parte de los partidos de cada torneo.
 Con datos de menos de 14 días, el pronóstico tiene en cuenta el cansancio y la inactividad reales
 de cada jugador; con datos más viejos, esas variables se ponen iguales para todos.
 
+**Pendiente:** programar `actualizar.py` para que se ejecute solo cada semana (Programador de
+tareas de Windows, por ejemplo los lunes a las 8:00, con la API parada a esa hora).
+
 Limitaciones conocidas:
 - El ranking ATP se queda en el del 8 de junio de 2026: ninguna fuente abierta publica los posteriores.
   El Elo, que es lo que más pesa en el modelo, sí se actualiza con cada resultado.
