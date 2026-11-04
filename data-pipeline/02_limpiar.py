@@ -24,7 +24,9 @@ def cargar_partidos() -> pd.DataFrame:
 
 def limpiar(df: pd.DataFrame) -> pd.DataFrame:
     df = df.dropna(subset=["winner_id", "loser_id", "score"])
-    df = df.drop_duplicates(subset=["tourney_id", "winner_id", "loser_id", "round"]).copy()
+    df = df.drop_duplicates(subset=["tourney_id", "winner_id", "loser_id", "round"])
+    # Errores del origen: unos pocos partidos de un jugador contra sí mismo.
+    df = df[df["winner_id"] != df["loser_id"]].copy()
 
     # Un walkover (W/O) no se juega: no aporta información sobre el nivel de nadie.
     df = df[~df["score"].str.contains("W/O|Walkover", case=False)]

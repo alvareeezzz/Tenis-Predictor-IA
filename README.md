@@ -15,6 +15,7 @@ python -m venv .venv
 .venv/Scripts/python data-pipeline/01_descargar.py   # descarga los CSV (~160 MB)
 .venv/Scripts/python data-pipeline/02_limpiar.py     # une y ordena los partidos
 .venv/Scripts/python data-pipeline/03_elo.py         # Elo general y por superficie
+.venv/Scripts/python data-pipeline/04_features.py    # H2H, estadísticas de saque y resto, forma, cansancio
 ```
 
 ## Datos
