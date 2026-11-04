@@ -9,3 +9,4 @@ onnxmltools
 skl2onnx
 matplotlib
 openpyxl
+pyarrow

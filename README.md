@@ -12,7 +12,9 @@ enfrentamientos directos y estadísticas individuales (aces, % de saque, puntos 
 ```bash
 python -m venv .venv
 .venv/Scripts/pip install -r data-pipeline/requirements.txt
-.venv/Scripts/python data-pipeline/01_descargar.py
+.venv/Scripts/python data-pipeline/01_descargar.py   # descarga los CSV (~160 MB)
+.venv/Scripts/python data-pipeline/02_limpiar.py     # une y ordena los partidos
+.venv/Scripts/python data-pipeline/03_elo.py         # Elo general y por superficie
 ```
 
 ## Datos

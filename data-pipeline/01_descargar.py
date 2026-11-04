@@ -12,14 +12,20 @@ import requests
 BASE_URL = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/atp"
 DESTINO = Path(__file__).parent / "data" / "raw"
 
-# Las estadísticas de cada partido (aces, % de saque...) existen desde 1991.
-PRIMER_ANIO = 1991
+# Se baja desde 1968 (inicio de la Era Open) para que el Elo tenga historia suficiente,
+# aunque las estadísticas de cada partido (aces, % de saque...) solo existen desde 1991.
+PRIMER_ANIO = 1968
+PRIMER_ANIO_CHALLENGER = 1978
 ULTIMO_ANIO = 2026
 
 ARCHIVOS = (
     [f"atp_matches_{anio}.csv" for anio in range(PRIMER_ANIO, ULTIMO_ANIO + 1)]
+    # Challengers y previas: muchos jugadores pasan ahí media temporada y el Elo los necesita.
+    + [f"atp_matches_qual_chall_{anio}.csv" for anio in range(PRIMER_ANIO_CHALLENGER, ULTIMO_ANIO + 1)]
     + [
         "atp_players.csv",
+        "atp_rankings_70s.csv",
+        "atp_rankings_80s.csv",
         "atp_rankings_90s.csv",
         "atp_rankings_00s.csv",
         "atp_rankings_10s.csv",
