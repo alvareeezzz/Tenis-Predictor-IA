@@ -103,6 +103,13 @@ Qué se ha probado para subir el acierto (decidido siempre en validación, 2021-
   prueba el XGBoost queda igual que antes (66,9 % → 66,7 %, log loss +0,0006 ± 0,0008: ruido).
 - **Sin ranking ATP**: no aporta nada sobre el Elo y en la app está congelado en junio de 2026.
 - Promediar XGBoost y regresión logística: −0,0002 en validación, no compensa ejecutar dos modelos.
+- **Modelo punto a punto (cadena de Markov)**: probabilidad del partido a partir de los puntos al
+  saque y al resto de cada uno. Sola acierta el 60 %; como variable, nada en validación y −0,0001 en
+  la prueba (ruido). Lo que sabe ya lo saben el Elo y las estadísticas de puntos.
+- **Contexto del torneo**: velocidad de la pista (aces de ediciones anteriores) e historial del
+  jugador en el torneo. −0,0001 en validación y −0,0004 en la prueba (IC 95 % cruzando el cero).
+  No compensa añadir a la app la elección del torneo concreto.
+  Ver [experimentos/markov_y_torneo.py](data-pipeline/experimentos/markov_y_torneo.py).
 
 ### Frente a las casas de apuestas (`07_comparar_cuotas.py`)
 
