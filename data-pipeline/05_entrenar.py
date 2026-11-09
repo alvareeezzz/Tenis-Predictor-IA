@@ -57,9 +57,18 @@ PARAMETROS_XGB = dict(
 # Challengers y las previas, un 40 % de lo que vale un partido del circuito principal
 VIDA_MEDIA_ANIOS = 13.6
 PESO_NO_PRINCIPAL = 0.41
+# La calibración se ajusta con las predicciones fuera de muestra de los dos últimos años
+VENTANA_CALIBRACION = pd.Timedelta(days=730)
+NOMBRES_NIVEL = {"G": "Grand Slam", "M": "Masters", "A": "ATP 250/500", "D": "Copa Davis", "F": "Finals", "O": "Juegos Olímp."}
 
 
 # --- Variables ---------------------------------------------------------------------------------
+
+def cargar_features() -> pd.DataFrame:
+    """Los partidos con los que se entrena y se evalúa (04_features.py ya empieza en 1991)."""
+    f = preparar(pd.read_parquet(DATOS / "features.parquet"))
+    return f[f["final_normal"]].reset_index(drop=True)
+
 
 def preparar(f: pd.DataFrame) -> pd.DataFrame:
     """Añade al lado de A y B las transformaciones que hacen falta antes de restar."""
@@ -109,6 +118,19 @@ def pesos(f: pd.DataFrame, hasta: str | pd.Timestamp) -> np.ndarray:
     anios = (pd.Timestamp(hasta) - f["fecha"]).dt.days.to_numpy() / 365.25
     w = np.exp2(-anios / VIDA_MEDIA_ANIOS) * np.where(f["circuito_principal"], 1.0, PESO_NO_PRINCIPAL)
     return np.tile(w, 2)
+
+
+def prob_elo(d: pd.DataFrame) -> pd.Series:
+    """Probabilidad de que gane A según el Elo combinado (la misma fórmula que prob_victoria de 03_elo.py)."""
+    return 1 / (1 + 10 ** ((d["elo_comb_b"] - d["elo_comb_a"]) / 400))
+
+
+def entrenar_final(historia: pd.DataFrame, bases: list[str], arboles: int, hasta: pd.Timestamp) -> xgb.XGBClassifier:
+    """El modelo de la app: los parámetros elegidos, sin parada temprana y con un número fijo de árboles."""
+    x, y = con_espejo(historia, bases)
+    parametros = {k: v for k, v in PARAMETROS_XGB.items() if k != "early_stopping_rounds"}
+    parametros["n_estimators"] = arboles
+    return xgb.XGBClassifier(**parametros).fit(x, y, sample_weight=pesos(historia, hasta))
 
 
 def predecir(modelo, f: pd.DataFrame, bases: list[str]) -> np.ndarray:
@@ -161,8 +183,7 @@ def tabla_calibracion(y: np.ndarray, p: np.ndarray) -> str:
 
 
 def main() -> None:
-    f = preparar(pd.read_parquet(DATOS / "features.parquet"))
-    f = f[f["final_normal"]].reset_index(drop=True)
+    f = cargar_features()
     bases = variables_jugador(f)
 
     entrenamiento = f[f["fecha"] < FIN_ENTRENAMIENTO]
@@ -173,18 +194,19 @@ def main() -> None:
     x_ent, y_ent = con_espejo(entrenamiento, bases)
     x_val, y_val = con_espejo(validacion, bases)
     print(f"{x_ent.shape[1]} variables")
+    columnas = list(x_ent.columns)
 
     logistica = RegresionLogistica().fit(x_ent, y_ent)
     arbol = xgb.XGBClassifier(**PARAMETROS_XGB)
     arbol.fit(x_ent, y_ent, sample_weight=pesos(entrenamiento, FIN_ENTRENAMIENTO), eval_set=[(x_val, y_val)], verbose=False)
     print(f"XGBoost: {arbol.best_iteration + 1} árboles (parada temprana en validación)")
+    del x_ent, x_val  # el modelo final construye su propia matriz: así no conviven las dos en memoria
 
-    elo = lambda d: 1 / (1 + 10 ** ((d["elo_comb_b"] - d["elo_comb_a"]) / 400))
-    ranking = lambda d: np.where(d["rank_a"].fillna(9999) < d["rank_b"].fillna(9999), 1.0,
-                                 np.where(d["rank_a"].fillna(9999) > d["rank_b"].fillna(9999), 0.0, 0.5))
+    # El ranking no da probabilidades: 1 si A va por delante, 0 si va por detrás, 0,5 sin ranking de ninguno
+    ranking = lambda d: 0.5 + 0.5 * np.sign(d["rank_b"].fillna(9999) - d["rank_a"].fillna(9999))
     modelos = {
         "Ranking ATP": ranking,
-        "Elo combinado": elo,
+        "Elo combinado": prob_elo,
         "Regresión logística": lambda d: predecir(logistica, d, bases),
         "XGBoost": lambda d: predecir(arbol, d, bases),
     }
@@ -194,30 +216,32 @@ def main() -> None:
         y = conjunto["gana_a"].to_numpy()
         informe.append(f"\n{nombre_conjunto} ({len(conjunto):,} partidos del circuito principal)")
         informe.append(f"  {'Modelo':<22} {'Acierto':>8} {'Log loss':>9} {'Brier':>7}")
-        for nombre, modelo in modelos.items():
-            p = np.asarray(modelo(conjunto), dtype=float)
-            m = metricas(y, p)
+        probs = {nombre: np.asarray(modelo(conjunto), dtype=float) for nombre, modelo in modelos.items()}
+        for nombre, p in probs.items():
             if nombre == "Ranking ATP":
                 acierto = np.where(p == 0.5, 0.5, (p > 0.5) == y).mean()  # sin ranking de ninguno: medio acierto
                 informe.append(f"  {nombre:<22} {acierto:>8.1%} {'-':>9} {'-':>7}")
             else:
+                m = metricas(y, p)
                 informe.append(f"  {nombre:<22} {m['acierto']:>8.1%} {m['log_loss']:>9.4f} {m['brier']:>7.4f}")
 
-    y = prueba["gana_a"].to_numpy()
-    p_sin_calibrar = predecir(arbol, prueba, bases)
+    # Tras el bucle, `y` y `probs` son los de la prueba
+    p_sin_calibrar = probs["XGBoost"]
 
     # Calibración. Comprobación honesta: ajustada con la primera mitad de la prueba, medida en la segunda
     mitad = (prueba["fecha"] < "2025-01-01").to_numpy()
     a_mitad = ajustar_calibracion(y[mitad], p_sin_calibrar[mitad])
-    antes, despues = metricas(y[~mitad], p_sin_calibrar[~mitad]), metricas(y[~mitad], calibrar(p_sin_calibrar[~mitad], a_mitad))
-    informe.append(f"\nCalibración ajustada con 2023-2024 (a = {a_mitad:.3f}) y medida en {(~mitad).sum():,} partidos de 2025-2026:")
+    y_2a, p_2a = y[~mitad], p_sin_calibrar[~mitad]
+    p_2a_calibrada = calibrar(p_2a, a_mitad)
+    antes, despues = metricas(y_2a, p_2a), metricas(y_2a, p_2a_calibrada)
+    informe.append(f"\nCalibración ajustada con 2023-2024 (a = {a_mitad:.3f}) y medida en {len(y_2a):,} partidos de 2025-2026:")
     informe.append(f"  log loss {antes['log_loss']:.4f} → {despues['log_loss']:.4f} | Brier {antes['brier']:.4f} → {despues['brier']:.4f}")
     informe.append("  sin calibrar:")
-    informe.append(tabla_calibracion(y[~mitad], p_sin_calibrar[~mitad]))
+    informe.append(tabla_calibracion(y_2a, p_2a))
     informe.append("  calibrado:")
-    informe.append(tabla_calibracion(y[~mitad], calibrar(p_sin_calibrar[~mitad], a_mitad)))
+    informe.append(tabla_calibracion(y_2a, p_2a_calibrada))
     # La de la app: con los dos últimos años de la prueba
-    recientes = (prueba["fecha"] >= prueba["fecha"].max() - pd.Timedelta(days=730)).to_numpy()
+    recientes = (prueba["fecha"] >= prueba["fecha"].max() - VENTANA_CALIBRACION).to_numpy()
     calibracion = ajustar_calibracion(y[recientes], p_sin_calibrar[recientes])
     informe.append(f"Calibración de la app, ajustada con los {recientes.sum():,} partidos de los dos últimos años: a = {calibracion:.3f}")
     p = calibrar(p_sin_calibrar, calibracion)
@@ -225,15 +249,15 @@ def main() -> None:
     # Predicciones del modelo que no vio la prueba, para compararlas con las cuotas (07_comparar_cuotas.py)
     pd.DataFrame({"orden": prueba["orden"].to_numpy(), "fecha": prueba["fecha"].to_numpy(), "gana_a": y,
                   "id_a": prueba["id_a"].to_numpy(), "prob_xgb": p, "prob_xgb_sin_calibrar": p_sin_calibrar,
-                  "prob_logistica": predecir(logistica, prueba, bases),
-                  "prob_elo": elo(prueba).to_numpy()}).to_parquet(DATOS / "predicciones_prueba.parquet", index=False)
+                  "prob_logistica": probs["Regresión logística"],
+                  "prob_elo": probs["Elo combinado"]}).to_parquet(DATOS / "predicciones_prueba.parquet", index=False)
 
     informe.append("\nAcierto de XGBoost en prueba por superficie y nivel:")
     acierta = (p > 0.5) == y
-    for col, nombres in (("surface", None), ("tourney_level", {"G": "Grand Slam", "M": "Masters", "A": "ATP 250/500", "D": "Copa Davis", "F": "Finals", "O": "Juegos Olímp."})):
+    for col, nombres in (("surface", {}), ("tourney_level", NOMBRES_NIVEL)):
         for valor, g in pd.Series(acierta).groupby(prueba[col].to_numpy()):
             if len(g) >= 50:
-                informe.append(f"  {(nombres or {}).get(valor, valor):<14} {g.mean():>6.1%}  ({len(g):,} partidos)")
+                informe.append(f"  {nombres.get(valor, valor):<14} {g.mean():>6.1%}  ({len(g):,} partidos)")
 
     importancia = pd.Series(arbol.get_booster().get_score(importance_type="gain")).sort_values(ascending=False)
     informe.append("\nVariables más importantes de XGBoost (ganancia media):")
@@ -245,18 +269,14 @@ def main() -> None:
     (DATOS / "informe_modelo.txt").write_text(texto, encoding="utf-8")
 
     # Modelo final para la app: mismos parámetros y nº de árboles, entrenado con todos los partidos
-    todos = f[f["fecha"] >= "1991-01-01"]
-    x_todos, y_todos = con_espejo(todos, bases)
-    parametros = {k: v for k, v in PARAMETROS_XGB.items() if k != "early_stopping_rounds"}
-    parametros["n_estimators"] = arbol.best_iteration + 1
-    final = xgb.XGBClassifier(**parametros).fit(x_todos, y_todos, sample_weight=pesos(todos, todos["fecha"].max()))
-    final.save_model(DATOS / "modelo_xgb.json")
+    hasta = f["fecha"].max()
+    entrenar_final(f, bases, arbol.best_iteration + 1, hasta).save_model(DATOS / "modelo_xgb.json")
     (DATOS / "modelo_columnas.json").write_text(json.dumps({
-        "bases": bases, "columnas": list(x_todos.columns), "calibracion": round(calibracion, 4),
+        "bases": bases, "columnas": columnas, "calibracion": round(calibracion, 4),
         # 08_seguimiento.py mide el acierto solo con los partidos posteriores a esta fecha
-        "entrenado_hasta": f"{todos['fecha'].max():%Y-%m-%d}",
+        "entrenado_hasta": f"{hasta:%Y-%m-%d}",
     }, indent=2))
-    print(f"\nModelo final entrenado con {len(todos):,} partidos y guardado en data/modelo_xgb.json")
+    print(f"\nModelo final entrenado con {len(f):,} partidos y guardado en data/modelo_xgb.json")
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 import xgboost as xgb
 
 RAIZ = Path(__file__).parent
@@ -34,21 +35,14 @@ def importar(nombre: str):
 
 
 entrenar = importar("05_entrenar.py")
-
-
-def prob_mercado(cuota_a: pd.Series, cuota_b: pd.Series) -> pd.Series:
-    validas = (cuota_a > 1) & (cuota_b > 1)
-    return ((1 / cuota_a) / (1 / cuota_a + 1 / cuota_b)).where(validas)
+cuotas_mercado = importar("07_comparar_cuotas.py")
 
 
 def modelo_hasta(f: pd.DataFrame, bases: list[str], desde: pd.Timestamp, arboles: int) -> xgb.XGBClassifier:
     """Mismo modelo que el guardado, pero entrenado solo con lo anterior a `desde`."""
-    historia = f[(f["fecha"] >= "1991-01-01") & (f["fecha"] < desde)]
-    x, y = entrenar.con_espejo(historia, bases)
-    parametros = {k: v for k, v in entrenar.PARAMETROS_XGB.items() if k != "early_stopping_rounds"}
-    parametros["n_estimators"] = arboles
+    historia = f[f["fecha"] < desde]
     print(f"Entrenando un modelo con {len(historia):,} partidos anteriores al {desde:%Y-%m-%d}...")
-    return xgb.XGBClassifier(**parametros).fit(x, y, sample_weight=entrenar.pesos(historia, desde))
+    return entrenar.entrenar_final(historia, bases, arboles, desde)
 
 
 def main() -> None:
@@ -62,15 +56,14 @@ def main() -> None:
     guardado.load_model(DATOS / "modelo_xgb.json")
     calibracion = contrato.get("calibracion", 1.0)
 
-    f = entrenar.preparar(pd.read_parquet(DATOS / "features.parquet"))
-    f = f[f["final_normal"]].reset_index(drop=True)
+    f = entrenar.cargar_features()
 
     if desde_arg:
         desde = pd.Timestamp(desde_arg)
         modelo = modelo_hasta(f, bases, desde, guardado.get_booster().num_boosted_rounds())
         # La calibración también solo con lo que se sabía entonces: los dos años anteriores a `desde`
         previas = pd.read_parquet(DATOS / "predicciones_prueba.parquet")
-        previas = previas[(previas["fecha"] < desde) & (previas["fecha"] >= desde - pd.Timedelta(days=730))]
+        previas = previas[(previas["fecha"] < desde) & (previas["fecha"] >= desde - entrenar.VENTANA_CALIBRACION)]
         calibracion = entrenar.ajustar_calibracion(previas["gana_a"].to_numpy(), previas["prob_xgb_sin_calibrar"].to_numpy())
         print(f"Calibración con los {len(previas):,} partidos de los dos años anteriores: a = {calibracion:.3f}")
     else:
@@ -85,17 +78,19 @@ def main() -> None:
                          f"hacen falta al menos {MINIMO_PARTIDOS} para que el acierto signifique algo.")
 
     nuevos["prob_modelo"] = entrenar.calibrar(entrenar.predecir(modelo, nuevos, bases), calibracion)
-    nuevos["prob_elo"] = 1 / (1 + 10 ** ((nuevos["elo_comb_b"] - nuevos["elo_comb_a"]) / 400))
+    nuevos["prob_elo"] = entrenar.prob_elo(nuevos)
 
-    # Cuotas de Pinnacle, guardadas por 02_limpiar.py en las filas recientes
-    cuotas = pd.read_parquet(DATOS / "partidos.parquet").set_index("orden")
+    # Cuotas de Pinnacle, guardadas por 02_limpiar.py en las filas recientes: solo esas columnas
+    ruta = DATOS / "partidos.parquet"
+    columnas = [c for c in pq.read_schema(ruta).names if c.startswith("cuota_")]
+    cuotas = pd.read_parquet(ruta, columns=["orden", *columnas]).set_index("orden")
     for momento in ("apertura", "cierre"):
         if f"cuota_ganador_{momento}" not in cuotas:
             continue
         ganador = nuevos["orden"].map(cuotas[f"cuota_ganador_{momento}"])
         perdedor = nuevos["orden"].map(cuotas[f"cuota_perdedor_{momento}"])
         a_gana = nuevos["gana_a"] == 1
-        nuevos[f"prob_{momento}"] = prob_mercado(ganador.where(a_gana, perdedor), perdedor.where(a_gana, ganador))
+        nuevos[f"prob_{momento}"] = cuotas_mercado.prob_mercado(ganador.where(a_gana, perdedor), perdedor.where(a_gana, ganador))
 
     y = nuevos["gana_a"].to_numpy()
     informe = [f"Partidos del circuito principal desde el {desde:%Y-%m-%d}: {len(nuevos):,} "
@@ -120,9 +115,8 @@ def main() -> None:
 
     informe.append("\nAcierto del modelo por tipo de torneo:")
     acierta = (nuevos["prob_modelo"] > 0.5) == (nuevos["gana_a"] == 1)
-    nombres = {"G": "Grand Slam", "M": "Masters", "A": "ATP 250/500", "D": "Copa Davis", "F": "Finals"}
     for nivel, g in acierta.groupby(nuevos["tourney_level"]):
-        informe.append(f"  {nombres.get(nivel, nivel):<14} {g.mean():>6.1%}  ({len(g):,} partidos)")
+        informe.append(f"  {entrenar.NOMBRES_NIVEL.get(nivel, nivel):<14} {g.mean():>6.1%}  ({len(g):,} partidos)")
 
     informe.append("\nCalibración del modelo:")
     informe.append(entrenar.tabla_calibracion(y, nuevos["prob_modelo"].to_numpy()))
