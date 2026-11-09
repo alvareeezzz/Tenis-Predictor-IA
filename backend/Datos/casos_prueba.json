@@ -8,7 +8,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.536097
+    "prob_a": 0.519034
   },
   {
     "jugador_a": 206173,
@@ -19,7 +19,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.541274
+    "prob_a": 0.562401
   },
   {
     "jugador_a": 206173,
@@ -30,7 +30,7 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.522391
+    "prob_a": 0.565938
   },
   {
     "jugador_a": 100644,
@@ -41,7 +41,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.658861
+    "prob_a": 0.647222
   },
   {
     "jugador_a": 100644,
@@ -52,7 +52,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.778394
+    "prob_a": 0.769107
   },
   {
     "jugador_a": 100644,
@@ -63,7 +63,7 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.651179
+    "prob_a": 0.604171
   },
   {
     "jugador_a": 210097,
@@ -74,7 +74,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.391916
+    "prob_a": 0.440452
   },
   {
     "jugador_a": 210097,
@@ -85,7 +85,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.364781
+    "prob_a": 0.404982
   },
   {
     "jugador_a": 210097,
@@ -96,7 +96,7 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.390027
+    "prob_a": 0.411321
   },
   {
     "jugador_a": 104925,
@@ -107,7 +107,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.537393
+    "prob_a": 0.478809
   },
   {
     "jugador_a": 104925,
@@ -118,7 +118,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.624395
+    "prob_a": 0.623421
   },
   {
     "jugador_a": 104925,
@@ -129,7 +129,7 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.648251
+    "prob_a": 0.620237
   },
   {
     "jugador_a": 126203,
@@ -140,7 +140,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.661258
+    "prob_a": 0.656432
   },
   {
     "jugador_a": 126203,
@@ -151,7 +151,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.372515
+    "prob_a": 0.454029
   },
   {
     "jugador_a": 126203,
@@ -162,7 +162,7 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.706819
+    "prob_a": 0.71361
   },
   {
     "jugador_a": 122330,
@@ -173,7 +173,7 @@
     "nivel": "M",
     "ronda": "QF",
     "mejor_de": 3,
-    "prob_a": 0.391407
+    "prob_a": 0.373865
   },
   {
     "jugador_a": 122330,
@@ -184,7 +184,7 @@
     "nivel": "G",
     "ronda": "F",
     "mejor_de": 5,
-    "prob_a": 0.396206
+    "prob_a": 0.374148
   },
   {
     "jugador_a": 122330,
@@ -195,6 +195,6 @@
     "nivel": "A",
     "ronda": "R16",
     "mejor_de": 3,
-    "prob_a": 0.444615
+    "prob_a": 0.417356
   }
 ]

@@ -75,11 +75,31 @@ def cargar_recientes(archivo: pd.DataFrame) -> pd.DataFrame:
         "best_of": np.where((nivel == "G") & (sets_ganador == 3), 5, 3),
         "round": "",
         "fuente": "valuebetennis",
+        # Cuotas de Pinnacle, para medir el modelo frente al mercado en estos partidos (08_seguimiento.py)
+        "cuota_ganador_apertura": d["odds_open_winner_decimal"], "cuota_perdedor_apertura": d["odds_open_loser_decimal"],
+        "cuota_ganador_cierre": d["odds_close_winner_decimal"], "cuota_perdedor_cierre": d["odds_close_loser_decimal"],
     })
     # Lo que ya está en el archivo de Sackmann no se repite
     r = r[r["tourney_date"] > archivo["tourney_date"].max()]
+    r = con_ranking(r)
     print(f"Resultados recientes: {len(r):,} partidos ({recuperados:,} jugadores identificados por nombre, "
           f"{descartados:,} partidos descartados por jugadores sin identificar)")
+    return r
+
+
+def con_ranking(r: pd.DataFrame) -> pd.DataFrame:
+    """Ranking ATP de cada jugador: el último publicado antes del torneo, como en Sackmann.
+
+    Los resultados recientes no traen ranking y no hay ninguno publicado después del 8 de junio de
+    2026, así que es el mismo ranking congelado que usa la app para pronosticar.
+    """
+    ranking = pd.read_csv(DATOS / "raw" / "atp_rankings_current.csv").rename(columns={"player": "id"})
+    ranking = ranking.sort_values("rank").drop_duplicates(["ranking_date", "id"]).sort_values("ranking_date")
+    r = r.sort_values("tourney_date")
+    for lado in ("winner", "loser"):
+        r = pd.merge_asof(r, ranking.rename(columns={"id": f"{lado}_id", "rank": f"{lado}_rank", "points": f"{lado}_rank_points"}),
+                          left_on="tourney_date", right_on="ranking_date", by=f"{lado}_id",
+                          allow_exact_matches=False).drop(columns="ranking_date")
     return r
 
 

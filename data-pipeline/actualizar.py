@@ -28,6 +28,9 @@ PASOS_REENTRENAR = [
     ("07_comparar_cuotas.py", "Comparar con las cuotas de Pinnacle"),
 ]
 PASO_EXPORTAR = ("06_exportar.py", "Exportar tenis.db y modelo.onnx para la API")
+# Acierto con los partidos jugados después de entrenar el modelo. No es imprescindible: justo
+# después de reentrenar todavía no hay partidos nuevos suficientes y solo avisa.
+PASO_SEGUIMIENTO = ("08_seguimiento.py", "Medir el acierto con los partidos nuevos")
 
 
 def api_arrancada() -> bool:
@@ -44,13 +47,16 @@ def main() -> None:
     if api_arrancada():
         sys.exit(f"La API está arrancada en el puerto {PUERTO_API} y tiene abierta tenis.db: párala antes de actualizar.")
 
-    pasos = PASOS + (PASOS_REENTRENAR if reentrenar else []) + [PASO_EXPORTAR]
+    pasos = PASOS + (PASOS_REENTRENAR if reentrenar else []) + [PASO_EXPORTAR, PASO_SEGUIMIENTO]
     inicio = time.time()
     for i, (script, descripcion) in enumerate(pasos, 1):
         print(f"\n[{i}/{len(pasos)}] {descripcion}", flush=True)
         t = time.time()
         resultado = subprocess.run([sys.executable, str(RAIZ / script)])
         if resultado.returncode != 0:
+            if (script, descripcion) == PASO_SEGUIMIENTO:
+                print("      Seguimiento omitido: la app ya está actualizada.")
+                continue
             sys.exit(f"Ha fallado {script}: los datos de la API no se han tocado.")
         print(f"      {time.time() - t:.0f} s", flush=True)
     print(f"\nActualización terminada en {(time.time() - inicio) / 60:.1f} min. Arranca la API: cd backend && dotnet run")

@@ -50,7 +50,7 @@ def prob_mercado(cuota_a: pd.Series, cuota_b: pd.Series) -> pd.Series:
 
 
 def unir(predicciones: pd.DataFrame, partidos: pd.DataFrame, cuotas: pd.DataFrame) -> pd.DataFrame:
-    p = predicciones.merge(partidos[["orden", "fecha", "tourney_date", "tourney_name", "tourney_level", "round",
+    p = predicciones.drop(columns="fecha", errors="ignore").merge(partidos[["orden", "fecha", "tourney_date", "tourney_name", "tourney_level", "round",
                                      "winner_name", "loser_name"]], on="orden")
     p["ganador"] = p["winner_name"].map(normalizar)
     p["perdedor"] = p["loser_name"].map(normalizar)

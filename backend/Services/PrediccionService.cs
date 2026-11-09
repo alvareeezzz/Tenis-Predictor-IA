@@ -8,7 +8,8 @@ namespace TenisPredictor.Api.Services;
 // Lo que describe modelo.json (generado por data-pipeline/06_exportar.py)
 public record ModeloContrato(
     List<string> Columnas, List<string> VariablesJugador, List<string> H2hComunes,
-    Dictionary<string, int> OrdenRondas, int DiasH2hReciente, double PesoSuperficie);
+    Dictionary<string, int> OrdenRondas, int DiasH2hReciente, Dictionary<string, double> PesoSuperficie,
+    double Calibracion = 1.0);
 
 // Reconstruye las variables del modelo igual que matriz() en data-pipeline/05_entrenar.py
 // y ejecuta el modelo ONNX. Los tests comparan el resultado con backend/Datos/casos_prueba.json.
@@ -91,13 +92,21 @@ public sealed class PrediccionService : IDisposable
         var entrada = new DenseTensor<float>(datos, [2, n]);
         using var resultados = _sesion.Run([NamedOnnxValue.CreateFromTensor("variables", entrada)]);
         var probabilidades = resultados.First(x => x.Name == "probabilities").AsTensor<float>();
-        var probA = (probabilidades[0, 1] + 1 - probabilidades[1, 1]) / 2.0;
+        var probA = Calibrar((probabilidades[0, 1] + 1 - probabilidades[1, 1]) / 2.0);
 
         var probEloA = 1 / (1 + Math.Pow(10, (b["elo_comb"] - a["elo_comb"]) / 400));
         var h2h = new BalanceH2H((int)a["h2h_victorias"], (int)b["h2h_victorias"]);
         var comparativa = ClavesComparativa.Select(c => new Comparativa(
             c.Clave, c.Nombre, ParaMostrar(c.Clave, a), ParaMostrar(c.Clave, b), c.MayorEsMejor)).ToList();
         return (probA, probEloA, h2h, comparativa);
+    }
+
+    // El modelo se pasa de confiado: se corrige igual que calibrar() en 05_entrenar.py,
+    // p' = sigmoide(a · logit p). Mantiene P(A) + P(B) = 1.
+    private double Calibrar(double p)
+    {
+        p = Math.Clamp(p, 1e-6, 1 - 1e-6);
+        return 1 / (1 + Math.Exp(-Modelo.Calibracion * Math.Log(p / (1 - p))));
     }
 
     // Valores de un jugador para este partido: su estado actual en la superficie + H2H contra el rival

@@ -4,6 +4,8 @@ Cada valor se calcula SOLO con partidos anteriores al partido que se quiere pred
 datos). Ventanas:
   _52s  últimas 52 semanas, todas las superficies
   _sup  últimos 2 años en la superficie del partido
+  _rec  toda la carrera, con más peso para lo reciente (decaimiento exponencial)
+Las variables exceso_* ajustan el saque y el resto por el nivel de cada rival.
 
 Los jugadores se colocan como A y B al azar (semilla fija): en los CSV el ganador siempre va
 primero y el modelo no debe poder aprender eso.
@@ -25,6 +27,7 @@ PRIMER_ANIO_FEATURES = 1991  # primer año con estadísticas de saque
 DIAS_52S = 365
 DIAS_SUPERFICIE = 730
 DIAS_H2H_RECIENTE = 1095
+VIDA_MEDIA_RECIENTE = 180  # ventana _rec: un partido de hace 180 días pesa la mitad
 MIN_PARTIDOS_CON_STATS = 5  # con menos, los porcentajes son ruido y se dejan vacíos
 SEMILLA = 42
 
@@ -129,6 +132,22 @@ def suma_previa(largo: pd.DataFrame, claves: list[str], columnas: list[str], dia
     return pd.DataFrame(sumas, columns=columnas, index=orden).loc[largo.index]
 
 
+def suma_decaida(largo: pd.DataFrame, claves: list[str], columnas: list[str], vida_media: float) -> pd.DataFrame:
+    """Como suma_previa, pero cada partido anterior pesa la mitad cada `vida_media` días.
+
+    suma_i = Σ_{j<i} v_j · 2^-(dia_i - dia_j)/vida = 2^-(dia_i - ref)/vida · Σ_{j<i} v_j · 2^(dia_j - ref)/vida,
+    con ref = primer día del grupo, para que los exponentes no se desborden.
+    """
+    orden = largo.sort_values([*claves, "orden"], kind="stable").index
+    t = largo.loc[orden]
+    grupos = t.groupby(claves, sort=False)
+    relativo = (t["dia"] - grupos["dia"].transform("first")).to_numpy(dtype=float) / vida_media
+    ponderado = t[columnas].astype(float).mul(np.exp2(relativo), axis=0)
+    previos = ponderado.groupby(grupos.ngroup().to_numpy()).cumsum() - ponderado
+    sumas = previos.clip(lower=0).mul(np.exp2(-relativo), axis=0)
+    return sumas.set_axis(orden).loc[largo.index]
+
+
 def dividir(a, b):
     a, b = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
     return np.divide(a, b, out=np.full_like(a, np.nan), where=b > 0)
@@ -175,13 +194,55 @@ def porcentajes(s: pd.DataFrame) -> pd.DataFrame:
     return r
 
 
+def puntos_sobre_lo_esperado(largo: pd.DataFrame, f: pd.DataFrame) -> pd.DataFrame:
+    """Puntos al saque y al resto ganados en cada partido por encima de lo que suele conceder el rival.
+
+    Lo esperado sale de las estadísticas del rival en sus 52 semanas ANTERIORES a este partido:
+    contra alguien que gana el 40 % de los puntos al resto, se espera ganar el 60 % al saque.
+    """
+    rival = f.set_index(["orden", "jugador"])[["pct_puntos_saque_52s", "pct_puntos_resto_52s"]]
+    del_rival = rival.reindex(pd.MultiIndex.from_arrays([largo["orden"], largo["rival"]])).to_numpy()
+    saque_rival, resto_rival = del_rival[:, 0], del_rival[:, 1]
+    valido_saque = (largo["svpt"].to_numpy() > 0) & ~np.isnan(resto_rival)
+    valido_resto = (largo["o_svpt"].to_numpy() > 0) & ~np.isnan(saque_rival)
+    puntos_saque = largo["1stWon"] + largo["2ndWon"]
+    puntos_resto = largo["o_svpt"] - largo["o_1stWon"] - largo["o_2ndWon"]
+    e = pd.DataFrame(index=largo.index)
+    e["exc_saque"] = np.where(valido_saque, puntos_saque - largo["svpt"] * (1 - resto_rival), 0)
+    e["svpt_exc"] = np.where(valido_saque, largo["svpt"], 0)
+    e["exc_resto"] = np.where(valido_resto, puntos_resto - largo["o_svpt"] * (1 - saque_rival), 0)
+    e["o_svpt_exc"] = np.where(valido_resto, largo["o_svpt"], 0)
+    e["n_exc"] = (valido_saque & valido_resto).astype(int)
+    return e
+
+
+EXCESO = ["exc_saque", "svpt_exc", "exc_resto", "o_svpt_exc", "n_exc"]
+
+
+def porcentajes_exceso(s: pd.DataFrame) -> pd.DataFrame:
+    r = pd.DataFrame(index=s.index)
+    r["exceso_saque"] = dividir(s["exc_saque"], s["svpt_exc"])
+    r["exceso_resto"] = dividir(s["exc_resto"], s["o_svpt_exc"])
+    r["exceso_puntos"] = dividir(s["exc_saque"] + s["exc_resto"], s["svpt_exc"] + s["o_svpt_exc"])
+    r.loc[s["n_exc"] < MIN_PARTIDOS_CON_STATS, :] = np.nan
+    return r
+
+
 def features_por_jugador(largo: pd.DataFrame) -> pd.DataFrame:
     f = pd.DataFrame(index=largo.index)
     f[["orden", "jugador", "rival"]] = largo[["orden", "jugador", "rival"]]
 
-    # Estadísticas: últimas 52 semanas y superficie del partido en los últimos 2 años
+    # Estadísticas: últimas 52 semanas, superficie del partido en los últimos 2 años y todas las
+    # superficies con más peso para lo reciente (un partido de hace VIDA_MEDIA_RECIENTE días vale la mitad)
     f = f.join(porcentajes(suma_previa(largo, ["jugador"], SUMABLES, dias=DIAS_52S)).add_suffix("_52s"))
     f = f.join(porcentajes(suma_previa(largo, ["jugador", "superficie_elo"], SUMABLES, dias=DIAS_SUPERFICIE)).add_suffix("_sup"))
+    f = f.join(porcentajes(suma_decaida(largo, ["jugador"], SUMABLES, VIDA_MEDIA_RECIENTE)).add_suffix("_rec"))
+
+    # Saque y resto ajustados por el nivel de cada rival, en las mismas tres ventanas
+    exceso = pd.concat([largo[["orden", "jugador", "superficie_elo", "dia"]], puntos_sobre_lo_esperado(largo, f)], axis=1)
+    f = f.join(porcentajes_exceso(suma_previa(exceso, ["jugador"], EXCESO, dias=DIAS_52S)).add_suffix("_52s"))
+    f = f.join(porcentajes_exceso(suma_previa(exceso, ["jugador", "superficie_elo"], EXCESO, dias=DIAS_SUPERFICIE)).add_suffix("_sup"))
+    f = f.join(porcentajes_exceso(suma_decaida(exceso, ["jugador"], EXCESO, VIDA_MEDIA_RECIENTE)).add_suffix("_rec"))
 
     # Forma
     for n in (10, 20):
@@ -280,7 +341,9 @@ def verificar_sin_fuga(largo: pd.DataFrame, por_jugador: pd.DataFrame, muestras:
         suyos = por_jugador_largo.get_group(fila["jugador"])
         previos = suyos[suyos["orden"] < fila["orden"]].sort_values("orden")
         v52 = previos[previos["dia"] > fila["dia"] - DIAS_52S]
+        peso = np.exp2(-(fila["dia"] - previos["dia"]) / VIDA_MEDIA_RECIENTE)
         esperado = {
+            "pct_victorias_rec": (previos["victorias"] * peso).sum() / peso.sum() if len(previos) else np.nan,
             "aces_juego_52s": v52["ace"].sum() / v52["SvGms"].sum() if v52["n_stats"].sum() >= MIN_PARTIDOS_CON_STATS else np.nan,
             "pct_victorias_52s": v52["victorias"].mean() if len(v52) else np.nan,
             "h2h_victorias": previos.loc[previos["rival"] == fila["rival"], "victorias"].sum(),
@@ -291,7 +354,7 @@ def verificar_sin_fuga(largo: pd.DataFrame, por_jugador: pd.DataFrame, muestras:
             if not (np.isclose(calculado, valor) or (np.isnan(calculado) and np.isnan(valor))):
                 errores += 1
                 print(f"  ✗ fila {i} {col}: calculado {calculado}, esperado {valor}")
-    print(f"Comprobación sin fuga de datos: {muestras * 4 - errores}/{muestras * 4} valores correctos")
+    print(f"Comprobación sin fuga de datos: {muestras * 5 - errores}/{muestras * 5} valores correctos")
     if errores:
         raise SystemExit("Hay diferencias: revisa el cálculo de las ventanas.")
 

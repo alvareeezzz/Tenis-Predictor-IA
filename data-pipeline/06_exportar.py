@@ -85,7 +85,8 @@ def estado_jugadores(partidos, elo_partidos, elo_actual, jugadores, ranking) -> 
     estado = estado.merge(elo_actual, on="player_id", how="left")
     estado["elo_sup"] = estado.apply(lambda r: r[f"elo_{r['superficie'].lower()}"], axis=1)
     estado["partidos_elo_sup"] = estado.apply(lambda r: r[f"partidos_{r['superficie'].lower()}"], axis=1)
-    estado["elo_comb"] = (1 - entrenar.PESO_SUPERFICIE) * estado["elo"] + entrenar.PESO_SUPERFICIE * estado["elo_sup"]
+    peso = estado["superficie"].map(entrenar.PESO_SUPERFICIE)
+    estado["elo_comb"] = (1 - peso) * estado["elo"] + peso * estado["elo_sup"]
     estado["log_experiencia"] = np.log1p(estado["partidos"])
     estado["log_experiencia_sup"] = np.log1p(estado["partidos_elo_sup"])
 
@@ -175,10 +176,10 @@ def vector_partido(estado, partidos_db, fecha_datos, a, b, superficie, nivel="A"
     return pd.DataFrame([fila])
 
 
-def predecir(sesion, columnas, bases, fila) -> float:
+def predecir(sesion, columnas, bases, fila, calibracion: float) -> float:
     p = [sesion.run(None, {"variables": entrenar.matriz(fila, bases, invertir=inv)[columnas].to_numpy(np.float32)})[1][0][1]
          for inv in (False, True)]
-    return float((p[0] + 1 - p[1]) / 2)
+    return float(entrenar.calibrar((p[0] + 1 - p[1]) / 2, calibracion))
 
 
 # --- Main ---------------------------------------------------------------------------------------
@@ -206,6 +207,7 @@ def main() -> None:
 
     contrato = json.loads((DATOS / "modelo_columnas.json").read_text())
     bases, columnas = contrato["bases"], contrato["columnas"]
+    calibracion = contrato.get("calibracion", 1.0)
     bases_estado = [c for c in bases if not c.startswith("h2h") and c != "viene_de_previa"]
 
     # Partidos (para el H2H y la evolución del Elo)
@@ -237,7 +239,7 @@ def main() -> None:
     metadatos = {
         "fecha_datos": f"{fecha_datos:%Y-%m-%d}",
         "fecha_ranking": f"{pd.to_datetime(str(fecha_ranking)):%Y-%m-%d}",
-        "peso_superficie": str(entrenar.PESO_SUPERFICIE),
+        "peso_superficie": json.dumps(entrenar.PESO_SUPERFICIE),
         "fuente": "Jeff Sackmann (tennis_atp), CC BY-NC-SA 4.0; resultados recientes de Valuebetennis, CC BY 4.0",
         "informe_modelo": informe,
     }
@@ -249,7 +251,8 @@ def main() -> None:
         raise SystemExit("tenis.db está abierta: para la API (dotnet run) antes de exportar y arráncala después.")
     with sqlite3.connect(ruta_db) as con:
         jugadores_db.to_sql("jugadores", con, index=False)
-        estado[["player_id", "superficie", *bases_estado]].to_sql("estado_jugador", con, index=False)
+        # log_rank no es variable del modelo, pero la API lo enseña en la comparativa
+        estado[["player_id", "superficie", *bases_estado, "log_rank"]].to_sql("estado_jugador", con, index=False)
         estadisticas.to_sql("estadisticas", con, index=False)
         partidos_db.to_sql("partidos", con, index=False)
         pd.DataFrame(metadatos.items(), columns=["clave", "valor"]).to_sql("metadatos", con, index=False)
@@ -277,6 +280,8 @@ def main() -> None:
         "orden_rondas": entrenar.ORDEN_RONDAS,
         "dias_h2h_reciente": features.DIAS_H2H_RECIENTE,
         "peso_superficie": entrenar.PESO_SUPERFICIE,
+        # Probabilidad final = sigmoide(calibracion · logit(p)), después de promediar los dos órdenes
+        "calibracion": calibracion,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # Casos de prueba para .NET: probabilidad esperada de varios partidos entre jugadores actuales
@@ -289,7 +294,7 @@ def main() -> None:
             fila = vector_partido(estado, partidos_db, fecha_datos, a, b, superficie, nivel, ronda, mejor_de)
             casos.append({"jugador_a": int(a), "jugador_b": int(b), "nombre_a": nombre[a], "nombre_b": nombre[b],
                           "superficie": superficie, "nivel": nivel, "ronda": ronda, "mejor_de": mejor_de,
-                          "prob_a": round(predecir(sesion, columnas, bases, fila), 6)})
+                          "prob_a": round(predecir(sesion, columnas, bases, fila, calibracion), 6)})
     (SALIDA / "casos_prueba.json").write_text(json.dumps(casos, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nEjemplos (datos a {fecha_datos:%Y-%m-%d}):")

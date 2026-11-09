@@ -7,14 +7,21 @@ Tres ratings por jugador:
 
 Se calcula con circuito principal, Challengers y previas, pero se evalúa solo en el circuito principal.
 
-Fórmula de FiveThirtyEight: K = 250 / (partidos_jugados + 5) ^ 0.4, de modo que los jugadores
-nuevos se mueven rápido y los veteranos despacio. Los Grand Slams pesan un 10 % más.
+Fórmula de FiveThirtyEight, K = A / (partidos_jugados + B) ^ C, de modo que los jugadores nuevos se
+mueven rápido y los veteranos despacio, con tres añadidos:
+  - marcador: ganar 6-1 6-2 mueve más el Elo que ganar 7-6 en el tercero
+  - inactividad: tras más de DIAS_AUSENCIA sin jugar el K vuelve a ser el de alguien con menos partidos,
+    porque no sabemos cómo vuelve
+  - peso de la superficie en el combinado, distinto en dura, tierra y hierba
+Los parámetros se eligieron con Optuna (mejor log loss en 2015-2022); los partidos de 2023 en
+adelante se reservan para la evaluación.
 
 Salidas:
   data/partidos_elo.parquet  Elo de cada jugador ANTES de cada partido (sin fuga de datos)
   data/elo_actual.parquet    Elo actual de cada jugador
 """
 
+import importlib.util
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,21 +32,40 @@ DATOS = Path(__file__).parent / "data"
 
 ELO_INICIAL = 1500.0
 SUPERFICIES = ["Hard", "Clay", "Grass"]
-PLUS_GRAND_SLAM = 1.1
-# Peso del Elo de superficie en el combinado, elegido con los partidos de 2015-2022
-# (mejor log loss); los de 2023 en adelante se reservan para la evaluación.
-PESO_SUPERFICIE = 0.4
+K_A, K_B, K_C = 225.0, 2.2, 0.45
+K_SUPERFICIE = 0.77     # el Elo de superficie se mueve algo más despacio que el general
+PLUS_GRAND_SLAM = 0.84  # los Grand Slams pesan menos: al mejor de 5 la sorpresa es más rara y dice menos
+EXPONENTE_MARCADOR = 0.49  # K × (2 × proporción de juegos del ganador) ^ EXPONENTE_MARCADOR
+DIAS_AUSENCIA = 41
+FACTOR_AUSENCIA = 0.74  # tras una ausencia, partidos_jugados × FACTOR_AUSENCIA
+# Peso del Elo de superficie en el combinado
+PESO_SUPERFICIE = {"Hard": 0.4, "Clay": 0.45, "Grass": 0.35}
 
 
 def factor_k(partidos_jugados: int) -> float:
-    return 250 / (partidos_jugados + 5) ** 0.4
+    return K_A / (partidos_jugados + K_B) ** K_C
+
+
+def elo_combinado(elo: pd.Series, elo_sup: pd.Series, superficie: pd.Series) -> pd.Series:
+    peso = superficie.map(PESO_SUPERFICIE)
+    return (1 - peso) * elo + peso * elo_sup
 
 
 def prob_victoria(elo_a: float, elo_b: float) -> float:
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
 
+def proporcion_juegos_ganador(partidos: pd.DataFrame) -> np.ndarray:
+    spec = importlib.util.spec_from_file_location("features", Path(__file__).parent / "04_features.py")
+    features = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(features)
+    m = np.array(partidos["score"].fillna("").map(lambda s: features.analizar_marcador(s)[2:4]).tolist(), dtype=float)
+    total = m.sum(axis=1)
+    return np.divide(m[:, 0], total, out=np.full(len(m), 0.5), where=total > 0)
+
+
 def calcular_elo(partidos: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    proporcion = proporcion_juegos_ganador(partidos)
     elo = defaultdict(lambda: ELO_INICIAL)
     jugados = defaultdict(int)
     elo_sup = {s: defaultdict(lambda: ELO_INICIAL) for s in SUPERFICIES}
@@ -47,8 +73,13 @@ def calcular_elo(partidos: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     ultimo_partido = {}
 
     previos = []
-    for p in partidos[["winner_id", "loser_id", "superficie_elo", "tourney_level", "final_normal", "fecha"]].itertuples(index=False):
+    columnas = ["winner_id", "loser_id", "superficie_elo", "tourney_level", "final_normal", "fecha"]
+    for p, juegos in zip(partidos[columnas].itertuples(index=False), proporcion):
         g, pe, sup = int(p.winner_id), int(p.loser_id), p.superficie_elo
+        for j in (g, pe):
+            if j in ultimo_partido and (p.fecha - ultimo_partido[j]).days > DIAS_AUSENCIA:
+                jugados[j] = int(jugados[j] * FACTOR_AUSENCIA)
+                jugados_sup[sup][j] = int(jugados_sup[sup][j] * FACTOR_AUSENCIA)
         previos.append((
             elo[g], elo[pe], elo_sup[sup][g], elo_sup[sup][pe],
             jugados[g], jugados[pe], jugados_sup[sup][g], jugados_sup[sup][pe],
@@ -59,11 +90,11 @@ def calcular_elo(partidos: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         if not p.final_normal:
             continue
 
-        plus = PLUS_GRAND_SLAM if p.tourney_level == "G" else 1.0
-        for ratings, cuenta in ((elo, jugados), (elo_sup[sup], jugados_sup[sup])):
+        plus = (PLUS_GRAND_SLAM if p.tourney_level == "G" else 1.0) * (2 * juegos) ** EXPONENTE_MARCADOR
+        for ratings, cuenta, k in ((elo, jugados, 1.0), (elo_sup[sup], jugados_sup[sup], K_SUPERFICIE)):
             esperado = prob_victoria(ratings[g], ratings[pe])
-            ratings[g] += factor_k(cuenta[g]) * plus * (1 - esperado)
-            ratings[pe] -= factor_k(cuenta[pe]) * plus * (1 - esperado)
+            ratings[g] += k * factor_k(cuenta[g]) * plus * (1 - esperado)
+            ratings[pe] -= k * factor_k(cuenta[pe]) * plus * (1 - esperado)
             cuenta[g] += 1
             cuenta[pe] += 1
 
@@ -93,9 +124,8 @@ def evaluar(partidos: pd.DataFrame, desde: str = "2023-01-01") -> None:
             np.where(p["winner_rank"].fillna(9999) == p["loser_rank"].fillna(9999), 0.5, 0.0)),
         "Elo general": prob_victoria(p["elo_w"], p["elo_l"]),
         "Elo de superficie": prob_victoria(p["elo_sup_w"], p["elo_sup_l"]),
-        "Elo combinado": prob_victoria(
-            (1 - PESO_SUPERFICIE) * p["elo_w"] + PESO_SUPERFICIE * p["elo_sup_w"],
-            (1 - PESO_SUPERFICIE) * p["elo_l"] + PESO_SUPERFICIE * p["elo_sup_l"]),
+        "Elo combinado": prob_victoria(elo_combinado(p["elo_w"], p["elo_sup_w"], p["superficie_elo"]),
+                                       elo_combinado(p["elo_l"], p["elo_sup_l"], p["superficie_elo"])),
     }
     print(f"\nEvaluación en {len(p):,} partidos del circuito principal desde {desde}:")
     print(f"  {'Método':<38} {'Acierto':>8} {'Log loss':>9} {'Brier':>7}")

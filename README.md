@@ -62,12 +62,47 @@ npx ng build                  # compila en backend/wwwroot: la API sirve la web 
 
 ## Resultados (partidos del circuito principal 2023-2026, nunca vistos al entrenar)
 
+11.024 partidos, incluidos los recientes de Valuebetennis (sin estadísticas de saque).
+
 | Modelo | Acierto | Log loss |
 |---|---|---|
-| Gana el mejor clasificado en el ranking ATP | 64,4 % | – |
-| Elo combinado (general + superficie) | 65,9 % | 0,608 |
-| Regresión logística | 67,1 % | 0,595 |
-| **XGBoost** | **67,1 %** | **0,594** |
+| Gana el mejor clasificado en el ranking ATP | 64,1 % | – |
+| Elo combinado (general + superficie) | 66,1 % | 0,607 |
+| Regresión logística | 66,7 % | 0,596 |
+| **XGBoost** | **66,7 %** | **0,597** |
+
+### Acierto real, en las condiciones de la app (`08_seguimiento.py`)
+
+Modelo entrenado solo con los partidos anteriores al 2 de junio de 2026 y evaluado con los 947 del
+circuito principal jugados hasta noviembre, sin estadísticas de saque y con el ranking congelado:
+
+| Método | Acierto | Log loss |
+|---|---|---|
+| Elo combinado | 64,4 % | 0,623 |
+| **Modelo (la app)** | **64,7 %** | **0,617** |
+| Pinnacle, apertura | 66,6 % | 0,601 |
+| Pinnacle, cierre | 66,7 % | 0,602 |
+
+Es un periodo más imprevisible para todos (Pinnacle también baja del 69 % al 67 %); la distancia con
+el mercado se mantiene en unos 2 puntos. Con 947 partidos, el margen de error es de ±1,6 puntos.
+`actualizar.py` repite la medición cada semana con los partidos posteriores al último entrenamiento
+y la añade a `data/seguimiento.csv`.
+
+### Calibración
+
+Desde 2023 el modelo se pasaba de confiado (decía 85 % y el favorito ganaba el 81 %). Se corrige con
+un solo parámetro ajustado con los dos últimos años: ajustado con 2023-2024 y medido en 2025-2026, el
+log loss baja de 0,5997 a 0,5992 (IC 95 %: entre −0,0011 y −0,0001), y en el seguimiento de junio a
+noviembre de 0,6187 a 0,6170. No cambia el acierto: solo hace más fiables los porcentajes.
+
+Qué se ha probado para subir el acierto (decidido siempre en validación, 2021-2022):
+- **Elo con marcador, inactividad y peso por superficie**, parámetros ajustados con Optuna: el Elo
+  solo pasa de 65,8 % a 66,1 % en la prueba (log loss −0,0026 ± 0,0005, mejora real).
+- **Estadísticas con decaimiento (`_rec`) y ajustadas por rival (`exceso_*`)**, hiperparámetros de
+  XGBoost con Optuna y pesos por antigüedad: mejoran en validación (0,5831 → 0,5815), pero en la
+  prueba el XGBoost queda igual que antes (66,9 % → 66,7 %, log loss +0,0006 ± 0,0008: ruido).
+- **Sin ranking ATP**: no aporta nada sobre el Elo y en la app está congelado en junio de 2026.
+- Promediar XGBoost y regresión logística: −0,0002 en validación, no compensa ejecutar dos modelos.
 
 ### Frente a las casas de apuestas (`07_comparar_cuotas.py`)
 
@@ -75,11 +110,11 @@ En los 6.416 partidos de prueba con cuota de Pinnacle (la casa más afinada del 
 
 | Método | Acierto | Log loss |
 |---|---|---|
-| XGBoost | 67,1 % | 0,595 |
+| XGBoost | 66,9 % | 0,596 |
 | Pinnacle, cuota de apertura | 68,1 % | 0,586 |
 | Pinnacle, cuota de cierre | 69,0 % | 0,582 |
 
-El mercado sigue por delante y apostar con el modelo pierde dinero (ROI de -7 % a -9 %).
+El mercado sigue por delante y apostar con el modelo pierde dinero (ROI de -8 % a -10 %).
 Cuotas: [Valuebetennis](https://www.valuebetennis.com/donnees.htm) (CC BY 4.0), emparejadas con
 Sackmann por [sumeetamin/tennis-history-data](https://github.com/sumeetamin/tennis-history-data).
 
