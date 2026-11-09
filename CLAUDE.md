@@ -100,7 +100,10 @@ Optuna. La moqueta se acumula con pista dura.
   en `src/styles.css`); tipografía Archivo en dos anchuras (estrecha para nombres y cifras). El estado
   del partido elegido vive en `PronosticoEstado` para no perderse al navegar.
 
-## Pendiente
+## Actualización programada
 
-Programar `actualizar.py` cada semana (Programador de tareas de Windows, con la API parada a esa
-hora). Está anotado; no crear la tarea sin que el usuario lo pida.
+La tarea "Tenis Predictor - actualización semanal" del Programador de tareas de Windows ejecuta
+`data-pipeline/actualizacion_programada.ps1` los lunes a las 8:30 (o en cuanto se encienda el
+ordenador si estaba apagado): para la API si está arrancada, ejecuta `actualizar.py` y la vuelve a
+arrancar. Registro en `data-pipeline/data/actualizacion_programada.log` (y `api.log` para la API).
+El `.ps1` va en UTF-8 con BOM: PowerShell 5.1 lee los que no lo llevan como ANSI.

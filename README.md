@@ -171,8 +171,10 @@ los juegos jugados), y solo cubren parte de los partidos de cada torneo.
 Con datos de menos de 14 días, el pronóstico tiene en cuenta el cansancio y la inactividad reales
 de cada jugador; con datos más viejos, esas variables se ponen iguales para todos.
 
-**Pendiente:** programar `actualizar.py` para que se ejecute solo cada semana (Programador de
-tareas de Windows, por ejemplo los lunes a las 8:00, con la API parada a esa hora).
+**Programada:** la tarea "Tenis Predictor - actualización semanal" del Programador de tareas de
+Windows ejecuta [actualizacion_programada.ps1](data-pipeline/actualizacion_programada.ps1) los lunes
+a las 8:30, o en cuanto se encienda el ordenador si estaba apagado. Para la API, actualiza y la
+vuelve a arrancar; lo que pasa queda en `data-pipeline/data/actualizacion_programada.log`.
 
 Limitaciones conocidas:
 - El ranking ATP se queda en el del 8 de junio de 2026: ninguna fuente abierta publica los posteriores.
