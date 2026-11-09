@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TenisApiService, mensajeDeError, type H2H, type Prediccion, type PrediccionRequest, type Superficie } from '../api/tenis-api.service';
-import { NIVELES, NOMBRE_RONDA, NOMBRE_SUPERFICIE, RONDAS, SUPERFICIES, formatearFecha, formatearProbabilidad } from '../formato';
+import { NIVELES, NOMBRE_RONDA, NOMBRE_SUPERFICIE, RONDAS, SUPERFICIES, apellido, formatearFecha, formatearProbabilidad } from '../formato';
 import { BuscadorJugador } from './buscador-jugador';
 import { ComparativaEstadisticas } from './comparativa';
 import { Pista } from './pista';
@@ -25,8 +25,26 @@ export class Pronostico {
   protected readonly probabilidad = formatearProbabilidad;
   protected readonly fecha = formatearFecha;
 
+  protected readonly apellido = apellido;
+
   protected readonly prediccion = signal<Prediccion | null>(null);
   protected readonly h2h = signal<H2H | null>(null);
+
+  // Enfrentamientos: los 5 últimos, y todos a petición
+  protected readonly verTodos = signal(false);
+  protected readonly partidosVisibles = computed(() => {
+    const partidos = this.h2h()?.partidos ?? [];
+    return this.verTodos() ? partidos : partidos.slice(0, 5);
+  });
+  // "6-7(4) 7-5" → ["6-7(4)", "7-5"]: cada set se mantiene entero al partir la línea
+  protected sets(marcador: string): string[] {
+    return marcador.split(' ').filter(Boolean);
+  }
+
+  // En móvil, con el partido ya elegido, los buscadores se pliegan en una línea para que el
+  // pronóstico quepa en la primera pantalla
+  protected readonly editandoPartido = signal(false);
+  protected readonly nombreNivel = computed(() => NIVELES.find(n => n.valor === this.estado.nivel())?.nombre ?? '');
   protected readonly cargando = signal(false);
   protected readonly error = signal('');
 
@@ -84,6 +102,7 @@ export class Pronostico {
       if (peticion !== this.ultimaPeticion) return; // ya se pidió otro partido
       this.peticionActual = datos;
       this.prediccion.set(prediccion);
+      if (h2h.jugadorA.id !== this.h2h()?.jugadorA.id || h2h.jugadorB.id !== this.h2h()?.jugadorB.id) this.verTodos.set(false);
       this.h2h.set(h2h);
       this.error.set('');
     } catch (error) {
@@ -114,6 +133,12 @@ export class Pronostico {
     this.explicacion.set('');
     this.errorExplicacion.set('');
     this.explicando.set(false);
+  }
+
+  // El botón desaparece al pulsarlo: el foco pasa al primer buscador para no perderse
+  protected cambiarPartido(): void {
+    this.editandoPartido.set(true);
+    setTimeout(() => document.querySelector<HTMLInputElement>('.jugadores input')?.focus());
   }
 
   protected cambiarNivel(nivel: string): void {

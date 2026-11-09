@@ -9,9 +9,20 @@ h1 { font-size: clamp(2.2rem, 7vw, 4rem); line-height: 0.95; }
   background: var(--pista); color: var(--sobre-pista);
 }
 
-.elos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; border-top: 1px solid var(--linea); padding-top: 16px; }
+.bloque-elo { border-top: 1px solid var(--linea); padding-top: 16px; }
+.elos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .elos dt { font-size: 0.875rem; color: var(--gris); }
 .elos dd { font-size: 2rem; line-height: 1.1; }
+.nota-elo { margin-top: 10px; font-size: 0.875rem; max-width: 70ch; }
+
+/* Últimos partidos: una fila de cabecera por torneo */
+.partidos .torneo th { padding-top: 16px; color: var(--tinta); font-weight: 600; }
+.cabecera-torneo { display: flex; justify-content: space-between; gap: 12px; }
+.partidos .torneo .fecha { font-weight: 400; }
+.partidos tbody:first-of-type .torneo th { padding-top: 6px; }
+.partidos .ronda { margin-left: 0.4em; }
+.partidos .tanteo { width: 45%; }
+.partidos .set { white-space: nowrap; margin-left: 0.35em; }
 
 .gano { color: var(--pista-texto); font-weight: 600; }
 

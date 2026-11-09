@@ -8,3 +8,6 @@ obj/
 backend/wwwroot/
 node_modules/
 .angular/
+
+# Capturas y registros del MCP de Playwright
+.playwright-mcp/

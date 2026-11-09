@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import type { Comparativa } from '../api/tenis-api.service';
-import { formatearEstadistica } from '../formato';
+import { FECHA_RANKING_ATP, formatearEstadistica } from '../formato';
 
 interface Fila extends Comparativa {
   textoA: string;
@@ -17,30 +17,30 @@ interface Fila extends Comparativa {
     <ul>
       @for (f of filas(); track f.clave) {
         <li>
-          <span class="valor marcador" [class.mejor]="f.mejor === 'a'">{{ f.textoA }}</span>
           <span class="nombre">{{ f.nombre }}</span>
-          <span class="valor marcador derecha" [class.mejor]="f.mejor === 'b'">{{ f.textoB }}</span>
+          <span class="valor marcador" [class.mejor]="f.mejor === 'a'">{{ f.textoA }}</span>
           <span class="barra" aria-hidden="true">
             <span class="parte" [class.mejor]="f.mejor === 'a'" [style.flex-grow]="f.parteA"></span>
             <span class="parte" [class.mejor]="f.mejor === 'b'" [style.flex-grow]="1 - f.parteA"></span>
           </span>
+          <span class="valor marcador derecha" [class.mejor]="f.mejor === 'b'">{{ f.textoB }}</span>
         </li>
       }
     </ul>
   `,
   styles: `
-    ul { list-style: none; display: grid; gap: 14px; }
-    li { display: grid; grid-template-columns: 5.5rem 1fr 5.5rem; align-items: baseline; row-gap: 5px; }
-    .nombre { text-align: center; font-size: 0.95rem; color: var(--gris); }
-    .valor { font-size: 1.375rem; color: var(--gris); }
-    .valor.mejor { color: var(--tinta); }
+    ul { list-style: none; display: grid; gap: 20px; }
+    /* Etiqueta a todo el ancho; debajo, cifra de A, barra repartida y cifra de B */
+    li { display: grid; grid-template-columns: 4.75rem 1fr 4.75rem; align-items: center; column-gap: 12px; }
+    .nombre { grid-column: 1 / -1; text-align: center; font-size: 0.9rem; line-height: 1.3; color: var(--gris); }
+    .valor { font-size: 1.375rem; line-height: 1.2; color: var(--gris); font-weight: 600; }
+    .valor.mejor { color: var(--tinta); font-weight: 700; }
     .derecha { text-align: right; }
-    .barra { grid-column: 1 / -1; display: flex; gap: 3px; height: 8px; }
+    .barra { display: flex; gap: 3px; height: 8px; }
     .parte { background: var(--linea); border-radius: 1px; transition: flex-grow 0.5s ease; }
     .parte.mejor { background: var(--pista); }
     @media (max-width: 520px) {
-      li { grid-template-columns: 4.5rem 1fr 4.5rem; }
-      .nombre { font-size: 0.85rem; }
+      li { grid-template-columns: 4.25rem 1fr 4.25rem; column-gap: 8px; }
       .valor { font-size: 1.2rem; }
     }
   `
@@ -56,6 +56,8 @@ export class ComparativaEstadisticas {
       else if (a + b > 0) parteA = c.mayorEsMejor ? a / (a + b) : b / (a + b);
     }
     const mejor = a === null || b === null || a === b ? null : (a > b) === c.mayorEsMejor ? 'a' : 'b';
-    return { ...c, parteA, mejor, textoA: formatearEstadistica(c.clave, a), textoB: formatearEstadistica(c.clave, b) };
+    // El ranking ATP no se actualiza desde junio de 2026 (no hay fuente abierta posterior)
+    const nombre = c.clave === 'log_rank' ? `${c.nombre} (${FECHA_RANKING_ATP})` : c.nombre;
+    return { ...c, nombre, parteA, mejor, textoA: formatearEstadistica(c.clave, a), textoB: formatearEstadistica(c.clave, b) };
   }));
 }

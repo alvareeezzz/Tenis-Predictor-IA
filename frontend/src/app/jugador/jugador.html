@@ -20,12 +20,18 @@
       }
     </header>
 
-    <dl class="elos">
-      <div><dt>Elo general</dt><dd class="marcador">{{ entero(f.jugador.elo.general) }}</dd></div>
-      <div><dt>En dura</dt><dd class="marcador">{{ entero(f.jugador.elo.dura) }}</dd></div>
-      <div><dt>En tierra</dt><dd class="marcador">{{ entero(f.jugador.elo.tierra) }}</dd></div>
-      <div><dt>En hierba</dt><dd class="marcador">{{ entero(f.jugador.elo.hierba) }}</dd></div>
-    </dl>
+    <div class="bloque-elo">
+      <dl class="elos">
+        <div><dt>Elo general</dt><dd class="marcador">{{ entero(f.jugador.elo.general) }}</dd></div>
+        <div><dt><span class="muestra" data-superficie="Hard"></span>En dura</dt><dd class="marcador">{{ entero(f.jugador.elo.dura) }}</dd></div>
+        <div><dt><span class="muestra" data-superficie="Clay"></span>En tierra</dt><dd class="marcador">{{ entero(f.jugador.elo.tierra) }}</dd></div>
+        <div><dt><span class="muestra" data-superficie="Grass"></span>En hierba</dt><dd class="marcador">{{ entero(f.jugador.elo.hierba) }}</dd></div>
+      </dl>
+      <p class="secundario nota-elo">
+        El Elo de cada superficie cuenta solo los partidos jugados en ella y se mueve más despacio, así que
+        suele quedar por debajo del general. El pronóstico mezcla los dos.
+      </p>
+    </div>
 
     @if (elo().length > 1) {
       <section>
@@ -39,7 +45,9 @@
       <div class="desplazable">
         <table class="tabla">
           <thead>
-            <tr><th></th>@for (c of columnas; track c.nombre) { <th class="num">{{ c.nombre }}</th> }</tr>
+            <tr><th></th>@for (c of columnas; track c.nombre) {
+              <th class="num">@if (c.superficie !== 'Todas') {<span class="muestra" [attr.data-superficie]="c.superficie"></span>}{{ c.nombre }}</th>
+            }</tr>
           </thead>
           <tbody>
             @for (fila of tabla(); track fila.nombre) {
@@ -52,24 +60,35 @@
 
     <section>
       <h2 class="titulo-seccion">Últimos partidos</h2>
-      <div class="desplazable">
-        <table class="tabla">
-          <thead><tr><th>Fecha</th><th>Torneo</th><th>Rival</th><th>Resultado</th></tr></thead>
+      <!-- Agrupados por torneo: el nombre y la fecha de inicio una vez, debajo sus partidos -->
+      <table class="tabla partidos">
+        <thead class="solo-lector"><tr><th>Rival y ronda</th><th>Resultado</th></tr></thead>
+        @for (t of torneos(); track t.clave) {
           <tbody>
-            @for (m of f.ultimosPartidos; track m.fecha + m.ronda + m.torneo) {
+            <tr class="torneo">
+              <th colspan="2" scope="colgroup">
+                <div class="cabecera-torneo">
+                  <span>@if (t.superficie) {<span class="muestra" [attr.data-superficie]="t.superficie"></span>}{{ t.torneo }}</span>
+                  <span class="secundario fecha">{{ fecha(t.fecha) }}</span>
+                </div>
+              </th>
+            </tr>
+            @for (m of t.partidos; track $index) {
               @let gano = m.ganadorId === f.jugador.id;
               <tr>
-                <td class="fecha">{{ fecha(m.fecha) }}</td>
-                <td>{{ m.torneo }} <span class="secundario">{{ m.ronda ? (nombreRonda[m.ronda] ?? m.ronda) + ', ' : '' }}{{ nombreSuperficie[m.superficie ?? ''] ?? '' }}</span></td>
                 <td>
                   <a [routerLink]="['/jugador', gano ? m.perdedorId : m.ganadorId]">{{ gano ? m.perdedorNombre : m.ganadorNombre }}</a>
+                  @if (m.ronda) { <span class="secundario ronda">{{ nombreRonda[m.ronda] ?? m.ronda }}</span> }
                 </td>
-                <td class="cifras"><span [class.gano]="gano">{{ gano ? 'Ganó' : 'Perdió' }}</span> {{ m.marcador }}</td>
+                <td class="cifras tanteo">
+                  <span [class.gano]="gano">{{ gano ? 'Ganó' : 'Perdió' }}</span>
+                  @for (set of m.marcador.split(' '); track $index) { <span class="set">{{ set }}</span> }
+                </td>
               </tr>
             }
           </tbody>
-        </table>
-      </div>
+        }
+      </table>
     </section>
   } @else if (!error()) {
     <p class="secundario">Cargando la ficha…</p>
