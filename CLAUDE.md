@@ -100,6 +100,12 @@ Optuna. La moqueta se acumula con pista dura.
   en `src/styles.css`); tipografía Archivo en dos anchuras (estrecha para nombres y cifras). El estado
   del partido elegido vive en `PronosticoEstado` para no perderse al navegar.
 
+## Servidores MCP (`.mcp.json`)
+
+Playwright (versión fijada), Angular CLI (solo lectura), Microsoft Learn y Context7. El de Angular
+usa la CLI de `frontend/node_modules`: necesita `cd frontend && npm install`. Context7 va sin clave
+(límite de consultas anónimo); con clave, se añade en la configuración de usuario, no en este archivo.
+
 ## Actualización programada
 
 La tarea "Tenis Predictor - actualización semanal" del Programador de tareas de Windows ejecuta

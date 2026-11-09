@@ -1,12 +1,16 @@
 {
   "mcpServers": {
     "playwright": {
-      "command": "npx",
-      "args": ["@playwright/mcp@latest"]
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@0.0.84"]
     },
     "angular-cli": {
       "command": "node",
-      "args": ["frontend/node_modules/@angular/cli/bin/ng.js", "mcp"]
+      "args": [
+        "${CLAUDE_PROJECT_DIR:-.}/frontend/node_modules/@angular/cli/bin/ng.js",
+        "mcp",
+        "--read-only"
+      ]
     },
     "microsoft-learn": {
       "type": "http",
