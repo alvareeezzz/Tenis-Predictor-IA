@@ -1,4 +1,14 @@
-<section class="partido contenedor" aria-label="Elige el partido">
+<section class="partido contenedor" aria-label="Elige el partido"
+         [class.plegado]="!editandoPartido() && estado.jugadorA() && estado.jugadorB()">
+  <!-- Solo en móvil: el partido elegido en una línea, para que el pronóstico quepa en la primera pantalla -->
+  <div class="resumen">
+    <p>
+      <strong class="marcador">{{ apellido(estado.jugadorA()?.nombre ?? '') }} – {{ apellido(estado.jugadorB()?.nombre ?? '') }}</strong>
+      <span class="secundario">{{ nombreNivel() }}, {{ nombreRonda[estado.ronda()]?.toLowerCase() }}</span>
+    </p>
+    <button type="button" class="cambiar" (click)="cambiarPartido()">Cambiar partido</button>
+  </div>
+
   <div class="jugadores">
     <app-buscador-jugador etiqueta="Jugador" [jugador]="estado.jugadorA()" (elegido)="estado.jugadorA.set($event)" />
     <button type="button" class="intercambiar" (click)="estado.intercambiar()" aria-label="Intercambiar jugadores" title="Intercambiar jugadores">⇄</button>
@@ -86,31 +96,40 @@
         <h2 class="titulo-seccion">Enfrentamientos</h2>
         @if (h2h(); as h) {
           @if (h.partidos.length) {
-            <p class="balance marcador">
-              <span>{{ h.total.victoriasA }}</span><span class="guion">–</span><span>{{ h.total.victoriasB }}</span>
-            </p>
-            <p class="secundario por-superficie">
+            <div class="balance">
+              <p class="lado" [class.lider]="h.total.victoriasA > h.total.victoriasB">
+                <span class="marcador cifra-balance">{{ h.total.victoriasA }}</span>
+                <span class="quien">{{ apellido(p.jugadorA.nombre) }}</span>
+              </p>
+              <span class="marcador guion" aria-hidden="true">–</span>
+              <p class="lado" [class.lider]="h.total.victoriasB > h.total.victoriasA">
+                <span class="marcador cifra-balance">{{ h.total.victoriasB }}</span>
+                <span class="quien">{{ apellido(p.jugadorB.nombre) }}</span>
+              </p>
+            </div>
+            <p class="secundario por-superficie cifras">
               @for (s of superficies; track s.valor) {
                 @if (h.porSuperficie[s.valor]; as b) {
-                  <span>{{ s.nombre }} {{ b.victoriasA }}–{{ b.victoriasB }}</span>
+                  <span><span class="muestra" [attr.data-superficie]="s.valor"></span>{{ s.nombre }} {{ b.victoriasA }}–{{ b.victoriasB }}</span>
                 }
               }
             </p>
-            <div class="desplazable">
-              <table class="tabla">
-                <thead><tr><th>Fecha</th><th>Torneo</th><th>Ganador</th><th>Resultado</th></tr></thead>
-                <tbody>
-                  @for (m of h.partidos; track m.fecha + m.ronda) {
-                    <tr>
-                      <td class="fecha">{{ fecha(m.fecha) }}</td>
-                      <td>{{ m.torneo }} <span class="secundario">{{ nombreRonda[m.ronda] ?? m.ronda }}</span></td>
-                      <td>{{ m.ganadorNombre }}</td>
-                      <td class="cifras">{{ m.marcador }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+            <table class="tabla h2h">
+              <thead><tr><th>Fecha</th><th>Torneo</th><th>Ganó</th><th>Resultado</th></tr></thead>
+              <tbody>
+                @for (m of partidosVisibles(); track m.fecha + m.ronda) {
+                  <tr>
+                    <td class="fecha">{{ fecha(m.fecha) }}</td>
+                    <td class="torneo">{{ m.torneo }} <span class="secundario">{{ nombreRonda[m.ronda] ?? m.ronda }}</span></td>
+                    <td class="ganador">{{ apellido(m.ganadorNombre) }}</td>
+                    <td class="cifras tanteo">@for (set of sets(m.marcador); track $index) {<span class="set">{{ set }}</span> }</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (h.partidos.length > partidosVisibles().length) {
+              <button type="button" class="ver-todos" (click)="verTodos.set(true)">Ver los {{ h.partidos.length }} partidos</button>
+            }
           } @else {
             <p class="secundario">Nunca se han enfrentado en el circuito.</p>
           }

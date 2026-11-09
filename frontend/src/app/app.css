@@ -4,12 +4,18 @@ main { flex: 1; }
 /* La barra lleva una línea del color de la pista: la única marca de la superficie fuera del contenido */
 .barra { border-bottom: 3px solid var(--pista); background: var(--papel); }
 .interior { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
-.logo { font-size: 1.5rem; color: var(--tinta); text-decoration: none; }
+.logo { font-size: 1.5rem; color: var(--tinta); text-decoration: none; white-space: nowrap; }
 nav { display: flex; gap: 20px; }
-nav a { color: var(--gris); text-decoration: none; font-weight: 600; padding: 4px 0; }
+nav a { color: var(--gris); text-decoration: none; font-weight: 600; padding: 4px 0; white-space: nowrap; }
+@media (max-width: 400px) {
+  .logo { font-size: 1.3rem; }
+  nav { gap: 14px; }
+  nav a { font-size: 0.95rem; }
+}
 nav a:hover { color: var(--tinta); }
 nav a.actual { color: var(--tinta); box-shadow: inset 0 -2px 0 var(--pista); }
 
-.pie { padding-top: 24px; padding-bottom: 32px; font-size: 0.85rem; border-top: 1px solid var(--linea); }
+/* width: en una columna flex, el margen automático del contenedor lo encogería a su texto */
+.pie { width: 100%; padding-top: 24px; padding-bottom: 32px; font-size: 0.85rem; border-top: 1px solid var(--linea); }
 .pie p { max-width: 80ch; }
 .pie a { color: inherit; }

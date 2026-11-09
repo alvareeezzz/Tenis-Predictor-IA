@@ -1,7 +1,7 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TenisApiService, mensajeDeError, type JugadorResumen, type Superficie } from '../api/tenis-api.service';
-import { SUPERFICIES } from '../formato';
+import { FECHA_RANKING_ATP, SUPERFICIES } from '../formato';
 import { PronosticoEstado } from '../pronostico/pronostico-estado.service';
 
 // Los 50 mejores por Elo entre quienes han jugado en el último año, en general o por superficie
@@ -28,14 +28,21 @@ import { PronosticoEstado } from '../pronostico/pronostico-estado.service';
       }
 
       <table class="tabla">
-        <thead><tr><th class="num">Puesto</th><th>Jugador</th><th class="num">Elo</th><th class="num">Ranking ATP</th></tr></thead>
+        <thead>
+          <tr>
+            <th class="num">Puesto</th><th>Jugador</th><th class="num">Elo</th>
+            <th class="distancia"><span class="solo-lector">Distancia al primero</span></th>
+            <th class="num">Ranking ATP <span class="fecha-atp">({{ fechaRankingAtp }})</span></th>
+          </tr>
+        </thead>
         <tbody>
-          @for (j of jugadores(); track j.id; let i = $index) {
+          @for (j of filas(); track j.id; let i = $index) {
             <tr>
-              <td class="num">{{ i + 1 }}</td>
-              <td><a [routerLink]="['/jugador', j.id]">{{ j.nombre }}</a> <span class="secundario">{{ j.pais }}</span></td>
-              <td class="num">{{ j.elo?.toLocaleString('es-ES', { maximumFractionDigits: 0 }) }}</td>
-              <td class="num">{{ j.ranking ?? '–' }}</td>
+              <td class="num puesto">{{ i + 1 }}</td>
+              <td><a [routerLink]="['/jugador', j.id]">{{ j.nombre }}</a><span class="secundario pais">{{ j.pais }}</span></td>
+              <td class="num marcador elo">{{ j.elo?.toLocaleString('es-ES', { maximumFractionDigits: 0 }) }}</td>
+              <td class="distancia" aria-hidden="true"><span class="barra" [style.width.%]="j.barra"></span></td>
+              <td class="num secundario">{{ j.ranking ?? '–' }}</td>
             </tr>
           }
         </tbody>
@@ -43,7 +50,16 @@ import { PronosticoEstado } from '../pronostico/pronostico-estado.service';
     </div>
   `,
   styles: `
-    .pagina { padding-top: 32px; padding-bottom: 48px; max-width: 760px; }
+    .pagina { padding-top: 32px; padding-bottom: 48px; }
+    .pais { margin-left: 0.5em; font-size: 0.9rem; }
+    .puesto { color: var(--gris); }
+    .elo { font-size: 1.15rem; }
+    .fecha-atp { font-weight: 400; }
+    /* Distancia al n.º 1: la barra del primero llena la columna */
+    .distancia { width: 32%; }
+    td.distancia { vertical-align: middle; }
+    .barra { display: block; height: 6px; background: var(--pista); border-radius: 1px; }
+    @media (max-width: 620px) { .distancia { display: none; } }
     h1 { font-size: clamp(2.2rem, 7vw, 3.5rem); }
     .intro { margin: 8px 0 24px; max-width: 60ch; }
     .filtro { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
@@ -63,6 +79,15 @@ export class Ranking {
   protected readonly superficie = signal<Superficie | 'General'>('General');
   protected readonly jugadores = signal<JugadorResumen[]>([]);
   protected readonly error = signal('');
+  protected readonly fechaRankingAtp = FECHA_RANKING_ATP;
+
+  // La barra empieza 100 puntos por debajo del último de la lista, para que el último no quede vacío
+  protected readonly filas = computed(() => {
+    const js = this.jugadores();
+    const elos = js.map(j => j.elo ?? 0);
+    const max = Math.max(...elos), base = Math.min(...elos) - 100;
+    return js.map(j => ({ ...j, barra: ((j.elo ?? base) - base) / Math.max(max - base, 1) * 100 }));
+  });
 
   constructor() {
     effect(() => {

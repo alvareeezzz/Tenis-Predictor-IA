@@ -15,6 +15,11 @@
   --pista-texto: #2a548f;  /* el mismo color como texto o enlace sobre --fondo */
   --sobre-pista: #ffffff;
 
+  /* Las tres superficies a la vez: solo donde aparecen juntas (ficha, enfrentamientos) */
+  --dura: #2f5d9e;
+  --tierra: #b0502a;
+  --hierba: #3d6b38;
+
   --letra: 'Archivo Variable', system-ui, sans-serif;
   --estrecha: 72%;         /* font-stretch para nombres y cifras */
   --ancho: 980px;
@@ -33,6 +38,9 @@
     --error: #ff8a7a;
     --pista: #2b548f;
     --pista-texto: #8db3f0;
+    --dura: #5b8bd6;
+    --tierra: #d9764a;
+    --hierba: #6aa35f;
     color-scheme: dark;
   }
   :root[data-superficie="Clay"] { --pista: #a14a26; --pista-texto: #f0a27a; }
@@ -70,6 +78,12 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .cifras { font-variant-numeric: tabular-nums; }
+
+/* Muestra de color de una superficie, delante de su nombre */
+.muestra { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 1px; margin-right: 0.35em; vertical-align: 0.05em; }
+.muestra[data-superficie="Hard"] { background: var(--dura); }
+.muestra[data-superficie="Clay"] { background: var(--tierra); }
+.muestra[data-superficie="Grass"] { background: var(--hierba); }
 
 .secundario { color: var(--gris); }
 

@@ -13,9 +13,13 @@ const SAQUE = (LARGO / 2) * (6.4 / 11.885);
 const TAMANO_MAXIMO = 120;
 const ANCHO_POR_PX = 1.9; // "88 %" en letra estrecha ocupa unas 1,9 veces su tamaño de letra
 
+const CENTRO = X0 + LARGO / 2;
+
+// Cada cifra va en la zona de fondo de su campo (entre la línea de fondo y la de saque), que no
+// tiene líneas que la crucen. Si la red entra en esa zona, la cifra se queda entre el fondo y la red.
 const cifraEnCampo = (desde: number, hasta: number) => ({
   x: (desde + hasta) / 2,
-  tamano: Math.max(28, Math.min(TAMANO_MAXIMO, (hasta - desde - 40) / ANCHO_POR_PX))
+  tamano: Math.max(28, Math.min(TAMANO_MAXIMO, (hasta - desde - 36) / ANCHO_POR_PX))
 });
 
 @Component({
@@ -41,6 +45,9 @@ const cifraEnCampo = (desde: number, hasta: number) => ({
         <line [attr.x1]="centro - saque" [attr.x2]="centro + saque" [attr.y1]="y0 + ancho / 2" [attr.y2]="y0 + ancho / 2" />
       </g>
       <line class="red-real" [attr.x1]="centro" [attr.x2]="centro" [attr.y1]="y0" [attr.y2]="y0 + ancho" />
+      @if (verMitad()) {
+        <text class="mitad" [class.campo-oscuro]="xRed() < centro" [attr.x]="centro" [attr.y]="y0 + pasillo / 2" text-anchor="middle" dominant-baseline="central">50 %</text>
+      }
 
       <g class="red" [style.transform]="desplazamiento()">
         <line x1="0" x2="0" [attr.y1]="y0 - 12" [attr.y2]="y0 + ancho + 12" />
@@ -61,6 +68,9 @@ const cifraEnCampo = (desde: number, hasta: number) => ({
     .campo-b { fill: #000; opacity: 0.24; transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); }
     .lineas { fill: none; stroke: var(--linea-pista); stroke-width: 5; opacity: 0.85; }
     .red-real { stroke: var(--linea-pista); stroke-width: 3; stroke-dasharray: 6 9; opacity: 0.55; }
+    .mitad { fill: var(--sobre-pista); font-size: 17px; font-weight: 600; paint-order: stroke; stroke: var(--pista); stroke-width: 10px; }
+    .mitad.campo-oscuro { stroke: color-mix(in srgb, var(--pista), #000 24%); }
+    @media (max-width: 520px) { .mitad { display: none; } } /* a ese ancho no se leería */
     .red { transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.2, 1); }
     .red line { stroke: var(--linea-pista); stroke-width: 9; }
     .red circle { fill: var(--linea-pista); }
@@ -80,16 +90,19 @@ export class Pista {
   protected readonly ancho = ANCHO;
   protected readonly pasillo = PASILLO;
   protected readonly saque = SAQUE;
-  protected readonly centro = X0 + LARGO / 2;
+  protected readonly centro = CENTRO;
 
-  private readonly xRed = computed(() => X0 + LARGO * this.probabilidadA());
+  protected readonly xRed = computed(() => X0 + LARGO * this.probabilidadA());
   protected readonly desplazamiento = computed(() => `translateX(${this.xRed()}px)`);
   protected readonly textoA = computed(() => formatearProbabilidad(this.probabilidadA()));
   protected readonly textoB = computed(() => formatearProbabilidad(1 - this.probabilidadA()));
 
   // Cada cifra va centrada en su campo y encoge si el campo es estrecho, para no pisar la red
-  protected readonly cifraA = computed(() => cifraEnCampo(X0, this.xRed()));
-  protected readonly cifraB = computed(() => cifraEnCampo(this.xRed(), X0 + LARGO));
+  protected readonly cifraA = computed(() => cifraEnCampo(X0, Math.min(this.xRed(), CENTRO - SAQUE)));
+  protected readonly cifraB = computed(() => cifraEnCampo(Math.max(this.xRed(), CENTRO + SAQUE), X0 + LARGO));
+
+  // La etiqueta del 50 % se esconde cuando la red del pronóstico pasa por encima
+  protected readonly verMitad = computed(() => Math.abs(this.xRed() - CENTRO) > 70);
 
   protected readonly descripcion = computed(() =>
     `Probabilidad de victoria: ${this.nombreA()} ${this.textoA()}, ${this.nombreB()} ${this.textoB()}`);

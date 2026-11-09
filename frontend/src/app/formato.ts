@@ -10,6 +10,15 @@ export const NOMBRE_SUPERFICIE: Record<string, string | undefined> = {
   Hard: 'Dura', Clay: 'Tierra', Grass: 'Hierba', Carpet: 'Moqueta'
 };
 
+// Último ranking ATP disponible: ninguna fuente abierta publica los posteriores
+export const FECHA_RANKING_ATP = '8 jun 2026';
+
+// "Jannik Sinner" → "Sinner", "Alex De Minaur" → "De Minaur": todo menos el nombre de pila
+export function apellido(nombre: string): string {
+  const espacio = nombre.indexOf(' ');
+  return espacio < 0 ? nombre : nombre.slice(espacio + 1);
+}
+
 export const NIVELES = [
   { valor: 'G', nombre: 'Grand Slam' },
   { valor: 'M', nombre: 'Masters 1000' },

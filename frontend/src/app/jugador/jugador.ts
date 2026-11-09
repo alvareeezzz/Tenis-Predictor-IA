@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { TenisApiService, mensajeDeError, type FichaJugador, type PuntoElo } from '../api/tenis-api.service';
+import { TenisApiService, mensajeDeError, type FichaJugador, type Partido, type PuntoElo } from '../api/tenis-api.service';
 import { NOMBRE_RONDA, NOMBRE_SUPERFICIE, formatearEstadistica, formatearFecha } from '../formato';
 import { PronosticoEstado } from '../pronostico/pronostico-estado.service';
 import { GraficaElo } from './grafica-elo';
@@ -68,6 +68,17 @@ export class Jugador {
       nombre: f.nombre,
       valores: COLUMNAS.map(c => formatearEstadistica(f.clave, buscar(c.ventana, c.superficie)?.[f.clave]))
     }));
+  });
+
+  // Últimos partidos agrupados por torneo (los seguidos con el mismo torneo y fecha de inicio)
+  protected readonly torneos = computed(() => {
+    const grupos: { clave: string; torneo: string; fecha: string; superficie: string | null; partidos: Partido[] }[] = [];
+    for (const m of this.ficha()?.ultimosPartidos ?? []) {
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.torneo === m.torneo && ultimo.fecha === m.fecha) ultimo.partidos.push(m);
+      else grupos.push({ clave: `${m.fecha}|${m.torneo}`, torneo: m.torneo, fecha: m.fecha, superficie: m.superficie, partidos: [m] });
+    }
+    return grupos;
   });
 
   constructor() {
