@@ -35,6 +35,40 @@ def cargar_partidos() -> pd.DataFrame:
     return df
 
 
+def verificar_recientes(d: pd.DataFrame) -> None:
+    """Comprueba que los resultados recientes son razonables antes de usarlos.
+
+    Se bajan siempre de la última versión de un repositorio de terceros que cambia a diario, sin
+    versión fija: si llegara algo corrupto o manipulado, mejor abortar que reentrenar con ello.
+    """
+    problemas = []
+    faltan = {"record_id", "match_date", "tourney_id", "tourney_name", "surface", "category", "score",
+              "winner_id", "loser_id", "winner_name", "loser_name"} - set(d.columns)
+    if faltan:
+        raise SystemExit(f"Resultados recientes: faltan las columnas {sorted(faltan)}")
+
+    dia = pd.to_datetime(d["match_date"], errors="coerce")
+    hoy = pd.Timestamp.today().normalize()
+    if dia.isna().any() or (dia < pd.Timestamp("2026-01-01")).any() or (dia > hoy + pd.Timedelta(days=1)).any():
+        problemas.append("fechas vacías, anteriores a 2026 o futuras")
+    if not d["surface"].isin(["Hard", "Clay", "Grass", "Carpet"]).all():
+        problemas.append(f"superficies desconocidas: {sorted(set(d['surface'].dropna()) - {'Hard', 'Clay', 'Grass', 'Carpet'})}")
+    if not d["score"].fillna("").str.contains(r"\d+-\d+").all():
+        problemas.append("marcadores sin ningún set")
+    if d["record_id"].duplicated().any():
+        problemas.append("partidos repetidos")
+    if d[["winner_name", "loser_name"]].isna().any().any() or (d["winner_id"] == d["loser_id"]).any():
+        problemas.append("jugadores vacíos o un jugador contra sí mismo")
+    cuotas = d.filter(like="_decimal")
+    if (cuotas <= 1).any().any():
+        problemas.append("cuotas menores o iguales que 1")
+    # El día con más partidos de 2026 tiene 65; 300 solo se supera si alguien inventa resultados
+    if len(d) and d.groupby("match_date").size().max() > 300:
+        problemas.append("un día con más de 300 partidos")
+    if problemas:
+        raise SystemExit("Resultados recientes sospechosos, no se usan: " + "; ".join(problemas))
+
+
 def cargar_recientes(archivo: pd.DataFrame) -> pd.DataFrame:
     """Resultados de Valuebetennis posteriores al archivo de Sackmann, en su mismo formato.
 
@@ -46,6 +80,7 @@ def cargar_recientes(archivo: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     d = pd.concat((pd.read_csv(r, low_memory=False) for r in rutas), ignore_index=True)
     d = d[d["record_id"].str.startswith("vb:") & d["category"].isin(NIVEL_RECIENTES)]
+    verificar_recientes(d)
 
     # Identidad: la verificada por el repositorio de origen o, si no la hay, un único jugador
     # del archivo con el mismo nombre y apellido que haya jugado en 2025-2026

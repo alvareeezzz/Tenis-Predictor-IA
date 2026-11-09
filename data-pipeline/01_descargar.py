@@ -15,7 +15,8 @@ from pathlib import Path
 
 import requests
 
-BASE_URL = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main/atp"
+# Fijado a un commit: el espejo está congelado y así nadie puede cambiar lo que se descarga
+BASE_URL = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/83733587353df8a41f2fd4f516147d5aa83f5a8d/atp"
 DESTINO = Path(__file__).parent / "data" / "raw"
 REPO_RECIENTES = "https://raw.githubusercontent.com/sumeetamin/tennis-history-data/HEAD/data"
 CUOTAS_DESTINO = DESTINO / "cuotas" / "linked_odds_sackmann.csv.gz"

@@ -79,7 +79,8 @@ public sealed class PrediccionService : IDisposable
     // Estado actual de un jugador en una superficie (Elo, forma, descanso, estadísticas): lo que ve el modelo
     public IReadOnlyDictionary<string, double> Estado(int jugador, string superficie) => _estado[(jugador, superficie)];
 
-    public bool EsRondaValida(string ronda) => Modelo.OrdenRondas.ContainsKey(ronda);
+    // System.Text.Json deja pasar null aunque el record diga string: sin la comprobación, ContainsKey lanza
+    public bool EsRondaValida(string? ronda) => ronda is not null && Modelo.OrdenRondas.ContainsKey(ronda);
 
     public (double ProbabilidadA, double ProbabilidadEloA, BalanceH2H H2H, List<Comparativa> Comparativa) Predecir(PrediccionRequest p)
     {

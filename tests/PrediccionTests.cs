@@ -66,6 +66,17 @@ public class PrediccionTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/api/prediccion")]
+    [InlineData("/api/explicacion")]
+    public async Task RondaNulaDevuelve400(string ruta)
+    {
+        var cliente = _fabrica.CreateClient();
+        var cuerpo = new { jugadorA = 206173, jugadorB = 207989, superficie = "Hard", ronda = (string?)null };
+        var respuesta = await cliente.PostAsJsonAsync(ruta, cuerpo);
+        Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
+    }
+
     [Fact]
     public async Task BuscadorEncuentraJugadoresActivos()
     {
