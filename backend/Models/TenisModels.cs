@@ -9,6 +9,15 @@ public class DatosOptions
     public string Directorio { get; set; } = "Datos";
 }
 
+// Sección "Explicacion" de appsettings.json: la explicación del pronóstico escrita por Claude
+public class ExplicacionOptions
+{
+    public string Modelo { get; set; } = "claude-opus-5-5";
+    public int MaxTokens { get; set; } = 4000;
+    public int PeticionesPorMinuto { get; set; } = 10;
+    public int HorasCache { get; set; } = 24;
+}
+
 // --- Jugadores ---------------------------------------------------------------------------------
 
 public record JugadorResumen(int Id, string Nombre, string? Pais, int? Ranking, double? Elo);

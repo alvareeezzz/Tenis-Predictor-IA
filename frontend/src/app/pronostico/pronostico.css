@@ -34,7 +34,21 @@
 .detalle-nombres { margin: 6px 0 10px; font-size: 0.95rem; }
 .derecha { text-align: right; }
 
-.lectura { margin: 16px 0 36px; font-size: 1.125rem; max-width: 62ch; }
+.lectura { margin: 16px 0 20px; font-size: 1.125rem; max-width: 62ch; }
+
+/* Explicación de Claude: un párrafo con la raya de la pista a la izquierda, como una nota al margen */
+.explicacion { margin-bottom: 36px; max-width: 62ch; }
+.texto-explicacion { border-left: 3px solid var(--pista); padding-left: 14px; font-size: 1.0625rem; }
+.aviso { font-size: 0.85rem; margin-top: 6px; padding-left: 17px; }
+.boton-explicar {
+  padding: 9px 16px; border-radius: 4px; border: 1px solid var(--pista-texto); background: transparent;
+  color: var(--pista-texto); font-weight: 600; cursor: pointer;
+}
+.boton-explicar:hover:not(:disabled) { background: var(--pista); border-color: var(--pista); color: var(--sobre-pista); }
+.boton-explicar:disabled { opacity: 0.6; cursor: default; }
+.explicacion .error { margin-top: 8px; }
+.cursor { display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em; background: var(--pista); animation: parpadeo 1s steps(1) infinite; }
+@keyframes parpadeo { 50% { opacity: 0; } }
 
 .columnas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; }
 

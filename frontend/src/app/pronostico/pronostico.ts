@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TenisApiService, mensajeDeError, type H2H, type Prediccion, type Superficie } from '../api/tenis-api.service';
+import { TenisApiService, mensajeDeError, type H2H, type Prediccion, type PrediccionRequest, type Superficie } from '../api/tenis-api.service';
 import { NIVELES, NOMBRE_RONDA, NOMBRE_SUPERFICIE, RONDAS, SUPERFICIES, formatearFecha, formatearProbabilidad } from '../formato';
 import { BuscadorJugador } from './buscador-jugador';
 import { ComparativaEstadisticas } from './comparativa';
@@ -29,6 +29,13 @@ export class Pronostico {
   protected readonly h2h = signal<H2H | null>(null);
   protected readonly cargando = signal(false);
   protected readonly error = signal('');
+
+  // Explicación escrita por Claude: solo se pide al pulsar el botón, porque cada una cuesta una llamada
+  protected readonly explicacion = signal('');
+  protected readonly explicando = signal(false);
+  protected readonly errorExplicacion = signal('');
+  private peticionActual: PrediccionRequest | null = null;
+  private cancelarExplicacion?: AbortController;
 
   // Los Grand Slams se juegan al mejor de 5 sets; el resto, al mejor de 3
   protected readonly mejorDe = computed(() => (this.estado.nivel() === 'G' ? 5 : 3));
@@ -70,12 +77,12 @@ export class Pronostico {
     }
     const peticion = ++this.ultimaPeticion;
     this.cargando.set(true);
+    this.olvidarExplicacion(); // era de otro partido
     try {
-      const [prediccion, h2h] = await Promise.all([
-        this.api.predecir({ jugadorA: a, jugadorB: b, ...partido }),
-        this.api.h2h(a, b)
-      ]);
+      const datos: PrediccionRequest = { jugadorA: a, jugadorB: b, ...partido };
+      const [prediccion, h2h] = await Promise.all([this.api.predecir(datos), this.api.h2h(a, b)]);
       if (peticion !== this.ultimaPeticion) return; // ya se pidió otro partido
+      this.peticionActual = datos;
       this.prediccion.set(prediccion);
       this.h2h.set(h2h);
       this.error.set('');
@@ -84,6 +91,29 @@ export class Pronostico {
     } finally {
       if (peticion === this.ultimaPeticion) this.cargando.set(false);
     }
+  }
+
+  protected async explicar(): Promise<void> {
+    if (!this.peticionActual) return;
+    this.olvidarExplicacion();
+    const cancelar = (this.cancelarExplicacion = new AbortController());
+    this.explicando.set(true);
+    try {
+      for await (const trozo of this.api.explicar(this.peticionActual, cancelar.signal))
+        this.explicacion.update(texto => texto + trozo);
+    } catch (error) {
+      if (!cancelar.signal.aborted) this.errorExplicacion.set(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (this.cancelarExplicacion === cancelar) this.explicando.set(false);
+    }
+  }
+
+  private olvidarExplicacion(): void {
+    this.cancelarExplicacion?.abort();
+    this.cancelarExplicacion = undefined;
+    this.explicacion.set('');
+    this.errorExplicacion.set('');
+    this.explicando.set(false);
   }
 
   protected cambiarNivel(nivel: string): void {

@@ -29,7 +29,7 @@ python -m venv .venv
 
 ```bash
 cd backend && dotnet run      # http://localhost:5014
-cd tests && dotnet test       # 24 tests, incluidas las predicciones de referencia de Python
+cd tests && dotnet test       # 27 tests, incluidas las predicciones de referencia de Python
 ```
 
 | Endpoint | Qué devuelve |
@@ -41,9 +41,29 @@ cd tests && dotnet test       # 24 tests, incluidas las predicciones de referenc
 | `GET /api/jugadores/{id}/elo` | Evolución del Elo partido a partido |
 | `GET /api/h2h/{a}/{b}` | Enfrentamiento directo: balance total, por superficie y lista de partidos |
 | `POST /api/prediccion` | Probabilidad de cada jugador, la del Elo, el H2H y una comparativa de estadísticas |
+| `POST /api/explicacion` | El mismo partido explicado en un párrafo por Claude (texto que llega a trozos) |
 
 Ejemplos listos para lanzar en [backend/TenisPredictor.Api.http](backend/TenisPredictor.Api.http).
 En desarrollo, el esquema OpenAPI está en `/openapi/v1.json`.
+
+### Explicación con IA
+
+La web tiene un botón «Explicar este pronóstico»: el servidor recalcula el pronóstico y le pasa a
+Claude (`claude-opus-5-5`, esfuerzo bajo) solo los datos de la página (probabilidades, Elo,
+enfrentamientos, estadísticas, forma y descanso). Claude escribe un párrafo con quién es favorito,
+por qué, y qué dato pide cautela. Solo se llama al pulsar el botón; la misma explicación se guarda
+24 h y hay un límite de 10 por minuto por visitante (sección `Explicacion` de `appsettings.json`).
+Si Claude rechaza una petición por seguridad, la API la reintenta con otro modelo (`fallbacks`).
+
+La clave de la API de Anthropic se guarda fuera del repositorio:
+
+```bash
+cd backend
+dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."   # desarrollo
+# en producción: variable de entorno ANTHROPIC_API_KEY
+```
+
+Sin clave, todo lo demás funciona y el botón avisa de que la explicación no está configurada.
 
 ## Web
 
@@ -56,6 +76,7 @@ npx ng build                  # compila en backend/wwwroot: la API sirve la web 
 - **Pronóstico**: elige jugador, rival, superficie, torneo y ronda. La probabilidad se dibuja como
   una pista: la red se coloca donde cae el pronóstico. Debajo, las estadísticas cara a cara y los
   enfrentamientos entre ambos. El color de la app sigue a la superficie (dura, tierra o hierba).
+  Con la clave configurada, Claude explica el pronóstico en un párrafo.
 - **Ficha del jugador**: Elo por superficie, su evolución, estadísticas de saque y resto por
   superficie y últimos partidos.
 - **Ranking Elo**: los 50 mejores por Elo, en general o en cada superficie.

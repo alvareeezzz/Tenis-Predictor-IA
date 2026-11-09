@@ -127,6 +127,31 @@ export class TenisApiService {
   predecir(peticion: PrediccionRequest): Promise<Prediccion> {
     return firstValueFrom(this.http.post<Prediccion>('/api/prediccion', peticion));
   }
+
+  // La explicación de Claude llega a trozos (text/plain): se va entregando según se escribe.
+  // HttpClient no da acceso al cuerpo a medias, por eso aquí se usa fetch.
+  async *explicar(peticion: PrediccionRequest, senal: AbortSignal): AsyncGenerator<string> {
+    let respuesta: Response;
+    try {
+      respuesta = await fetch('/api/explicacion', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(peticion), signal: senal
+      });
+    } catch (error) {
+      if (senal.aborted) return;
+      throw new Error(mensajeDeError(error));
+    }
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.json().catch(() => null);
+      throw new Error(typeof cuerpo?.error === 'string' ? cuerpo.error : mensajeDeError(null));
+    }
+    const lector = respuesta.body!.pipeThrough(new TextDecoderStream()).getReader();
+    while (true) {
+      const { value, done } = await lector.read();
+      if (done) return;
+      yield value;
+    }
+  }
 }
 
 // La API siempre responde {"error": "..."}; si no llega eso, es que no hay API detrás

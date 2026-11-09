@@ -31,3 +31,16 @@ Content-Type: application/json
   "ronda": "F",
   "mejorDe": 5
 }
+
+### Explicación del pronóstico por Claude (necesita Anthropic:ApiKey en user-secrets)
+POST {{api}}/explicacion
+Content-Type: application/json
+
+{
+  "jugadorA": 207989,
+  "jugadorB": 206173,
+  "superficie": "Clay",
+  "nivel": "G",
+  "ronda": "F",
+  "mejorDe": 5
+}

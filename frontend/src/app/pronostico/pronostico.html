@@ -62,6 +62,20 @@
       Solo con el Elo, {{ p.jugadorA.nombre }} tendría un {{ probabilidad(p.probabilidadEloA) }}.
     </p>
 
+    <section class="explicacion" aria-label="Explicación del pronóstico">
+      @if (explicacion()) {
+        <p class="texto-explicacion" aria-live="polite">{{ explicacion() }}@if (explicando()) {<span class="cursor" aria-hidden="true"></span>}</p>
+        <p class="secundario aviso">Escrito por Claude (IA) con los datos de esta página. Puede equivocarse.</p>
+      } @else {
+        <button type="button" class="boton-explicar" (click)="explicar()" [disabled]="explicando() || cargando()">
+          {{ explicando() ? 'Escribiendo la explicación…' : 'Explicar este pronóstico' }}
+        </button>
+      }
+      @if (errorExplicacion()) {
+        <p class="error" role="alert">{{ errorExplicacion() }}</p>
+      }
+    </section>
+
     <div class="columnas">
       <section>
         <h2 class="titulo-seccion">Cara a cara</h2>
